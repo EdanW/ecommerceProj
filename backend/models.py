@@ -2,11 +2,22 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True)
     hashed_password: str
-    pregnancy_week: int = 28  # Default based on Ellie's story [cite: 2]
+
+    # New Fields
+    first_name: Optional[str] = None  # Added
+    last_name: Optional[str] = None  # Added
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    pregnancy_start_date: Optional[str] = None
+    medical_notes: Optional[str] = None
 
 class GlucoseLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

@@ -1,6 +1,5 @@
 import random
 
-
 def get_current_glucose_level():
     # Simulating a mock glucose stream.
     # In a real app, this would connect to a sensor API.

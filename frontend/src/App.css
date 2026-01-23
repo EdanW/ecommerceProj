@@ -6,25 +6,46 @@
   --white: #fff;
 }
 
-body { background-color: #f0f4f0; display: flex; justify-content: center; font-family: 'Inter', sans-serif; }
+body {
+    background-color: #f0f2f5; /* Force Light Grey Background */
+    color: #333;               /* Force Dark Text */
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased; /* Makes fonts look like Mac on Windows */
+}
 
 .app-container {
-  display: flex; justify-content: center; align-items: center; height: 100vh;
+  display: flex; justify-content: center; align-items: center; width: 100%; height: 100vh;
 }
 
+/* STRICT PHONE FRAME */
 .phone-frame {
-  width: 375px; height: 812px;
+  width: 375px;        /* Fixed iPhone Width */
+  height: 812px;       /* Fixed iPhone Height */
+  min-width: 375px;    /* Prevent shrinking */
   background: var(--white);
   border-radius: 40px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+  overflow: hidden;    /* Cut off overflowing content */
   position: relative;
-  border: 8px solid #333;
+  border: 12px solid #333; /* Thicker bezel */
+  display: flex;
+  flex-direction: column;
 }
 
-.content { padding: 20px; height: 85%; overflow-y: auto; }
+.content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;   /* Scroll vertical */
+    overflow-x: hidden; /* No scroll horizontal */
+    padding-bottom: 90px;
+}
 
-/* Dashboard Cards */
+/* Common Styles */
 .card {
   background: var(--white);
   border: 1px solid #f0f0f0;
@@ -34,72 +55,54 @@ body { background-color: #f0f4f0; display: flex; justify-content: center; font-f
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-.greeting h2 { color: var(--dark); font-size: 24px; margin-top: 5px; }
-.subtext { color: #888; font-size: 14px; }
-
-.progress-card { background: #FFF5F7; border: none; }
-.pink-tag { background: white; padding: 4px 8px; border-radius: 12px; color: var(--pink); font-size: 10px; font-weight: bold; float: right; }
-.progress-bar { height: 8px; background: rgba(244, 143, 177, 0.2); border-radius: 4px; margin: 10px 0; }
-.progress-bar div { height: 100%; background: linear-gradient(90deg, #F48FB1, #FFD180); border-radius: 4px; }
-
-.glucose-card h1 { font-size: 42px; margin: 10px 0; }
-.unit { font-size: 16px; color: #888; font-weight: normal; }
-.alert-text { color: #FF9F9F; }
-.normal-text { color: #F2C94C; } /* Matches the 125 mg/dL color in image */
-
-.crave-btn {
-  width: 100%;
-  padding: 18px;
-  background: linear-gradient(90deg, #A29BFE, #F48FB1);
-  border: none;
-  border-radius: 20px;
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  cursor: pointer;
-  box-shadow: 0 10px 20px rgba(244, 143, 177, 0.4);
+.modern-input {
+    width: 100%;
+    box-sizing: border-box; /* Fixes width calculation */
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #E0E0E0;
+    border-radius: 12px;
+    background-color: #F8F9FA;
+    font-size: 14px;
 }
 
-/* Craving View */
-.input-group input {
-  width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 15px; margin-bottom: 10px;
-  font-size: 16px;
+.row-inputs {
+    display: flex;
+    gap: 10px;
 }
-.input-group button {
-  width: 100%; padding: 15px; background: var(--mint); color: white; border: none; border-radius: 15px; font-weight: bold;
+.row-inputs input {
+    width: 50%; /* Force 50% width */
 }
 
-.ai-response {
-  margin-top: 20px; background: #F9FAFB; padding: 20px; border-radius: 20px;
-}
-.status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px;}
+/* Button & Text Styles from before... */
+.crave-btn { width: 100%; padding: 16px; background: linear-gradient(90deg, #A29BFE, #F48FB1); border: none; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
+.back-btn { background: none; border: none; font-size: 16px; color: #888; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;}
+.tiny-text { font-size: 12px; color: #888; }
+.logo-text { font-family: sans-serif; color: #6FCF97; font-weight: 900; }
+.status-badge { padding: 8px; border-radius: 8px; font-size: 12px; text-align: center; }
 .status-badge.green { background: #E8F5E9; color: #2E7D32; }
 .status-badge.orange { background: #FFF3E0; color: #EF6C00; }
 
-.suggestion-box {
-  margin-top: 15px; background: white; padding: 15px; border-radius: 15px; border-left: 4px solid var(--mint);
+/* Nav */
+.bottom-nav { position: absolute; bottom: 0; width: 100%; height: 80px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; color: #ccc; z-index: 10; }
+.bottom-nav .active { color: var(--pink); font-weight: bold; }
+
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.bottom-nav {
-  position: absolute; bottom: 0; width: 100%; height: 80px; background: white;
-  display: flex; justify-content: space-around; align-items: center;
-  border-top: 1px solid #eee; color: #ccc;
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
 }
-.bottom-nav .active { color: var(--pink); font-weight: bold; }
-.habit-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 15px 0; border-bottom: 1px solid #f5f5f5;
-}
-.icon-box {
-    width: 40px; height: 40px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    margin-right: 15px;
-}
-.icon-box.blue { background: #E3F2FD; color: #2196F3; }
-.icon-box.green { background: #E8F5E9; color: #4CAF50; }
-.habit-info { flex-grow: 1; display: flex; flex-direction: column; }
-.add-btn {
-    background: #f0f0f0; border: none; width: 32px; height: 32px; border-radius: 50%;
-    font-weight: bold; cursor: pointer;
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }

@@ -2,16 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, create_engine, select
 from pydantic import BaseModel
-from .models import User, GlucoseLog
+from typing import Optional
+from .models import User, GlucoseLog, DailyHabit
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .simulator import get_current_glucose_level
 from .ai_engine import engine as ai_engine
-from .models import DailyHabit
-from .models import GlucoseLog
-import random
-from datetime import datetime, timedelta
 
-# database:
 # Database Setup
 sqlite_file_name = "backend/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -25,10 +21,9 @@ def create_db_and_tables():
 
 app = FastAPI()
 
-# Allow CORS for the separate frontend client
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, change to specific frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,7 +35,21 @@ def on_startup():
     create_db_and_tables()
 
 
-# --- Pydantic Models for Requests ---
+# --- Updated Request Models ---
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    first_name: Optional[str] = None  # Added
+    last_name: Optional[str] = None  # Added
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    pregnancy_start_date: Optional[str] = None
+    medical_notes: Optional[str] = None
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -50,16 +59,29 @@ class CravingRequest(BaseModel):
     food_name: str
 
 
-# --- Routes ---
+# --- API Routes ---
 
 @app.post("/register")
-def register(user: LoginRequest):
+def register(user_data: RegisterRequest):
     with Session(engine_db) as session:
-        existing_user = session.exec(select(User).where(User.username == user.username)).first()
+        existing_user = session.exec(select(User).where(User.username == user_data.username)).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="Username already exists")
-        hashed_pw = get_password_hash(user.password)
-        new_user = User(username=user.username, hashed_password=hashed_pw)
+
+        hashed_pw = get_password_hash(user_data.password)
+        new_user = User(
+            username=user_data.username,
+            hashed_password=hashed_pw,
+            first_name=user_data.first_name,  # Save Name
+            last_name=user_data.last_name,  # Save Surname
+            email=user_data.email,
+            phone=user_data.phone,
+            age=user_data.age,
+            height=user_data.height,
+            weight=user_data.weight,
+            pregnancy_start_date=user_data.pregnancy_start_date,
+            medical_notes=user_data.medical_notes
+        )
         session.add(new_user)
         session.commit()
         return {"message": "User created"}
@@ -77,82 +99,54 @@ def login(user: LoginRequest):
 
 @app.get("/status")
 def get_dashboard_data(current_user: User = Depends(get_current_user)):
-    # Combines User Data + Simulated Glucose
     glucose_data = get_current_glucose_level()
     return {
-        "user": current_user.username,
-        "week": current_user.pregnancy_week,
+        "user": current_user.username,  # Keep for internal logic if needed
+        "week": 28,
         "glucose": glucose_data,
-        "streak": 3,  # Mocked streak [cite: 43]
-        "wellness_message": "You're doing wonderfully" if glucose_data['level'] < 130 else "Small steps, big impact"
+        "wellness_message": "You're doing wonderfully" if glucose_data['level'] < 130 else "Small steps, big impact",
+        # THIS FIXES THE EMPTY PROFILE BUG:
+        "profile": {
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "email": current_user.email,
+            "phone": current_user.phone,
+            "age": current_user.age,
+            "height": current_user.height,
+            "weight": current_user.weight,
+            "pregnancy_start_date": current_user.pregnancy_start_date,
+            "medical_notes": current_user.medical_notes
+        }
     }
+
+
+@app.put("/update_profile")
+def update_profile(data: RegisterRequest, current_user: User = Depends(get_current_user)):
+    with Session(engine_db) as session:
+        user = session.get(User, current_user.id)
+
+        # Update fields if provided (and not None)
+        if data.first_name is not None: user.first_name = data.first_name
+        if data.last_name is not None: user.last_name = data.last_name
+        if data.email is not None: user.email = data.email
+        if data.phone is not None: user.phone = data.phone
+        if data.age is not None: user.age = data.age
+        if data.height is not None: user.height = data.height
+        if data.weight is not None: user.weight = data.weight
+        if data.pregnancy_start_date is not None: user.pregnancy_start_date = data.pregnancy_start_date
+        if data.medical_notes is not None: user.medical_notes = data.medical_notes
+
+        session.add(user)
+        session.commit()
+        return {"message": "Updated"}
 
 
 @app.post("/analyze_craving")
 def check_craving(request: CravingRequest, current_user: User = Depends(get_current_user)):
-    # 1. Get current physical state
     glucose_data = get_current_glucose_level()
-
-    # 2. Ask AI Engine
-    ai_response = ai_engine.analyze_craving(
-        craving_text=request.food_name,
-        current_glucose=glucose_data['level'],
-        week=current_user.pregnancy_week
-    )
-    return ai_response
-
-class HabitUpdate(BaseModel):
-    habit_type: str # 'water', 'movement', 'sleep'
-    value: int
+    return ai_engine.analyze_craving(request.food_name, glucose_data['level'], 28)
 
 
 @app.post("/log_habit")
-def log_habit(update: HabitUpdate, current_user: User = Depends(get_current_user)):
-    today = datetime.now().strftime("%Y-%m-%d")
-    with Session(engine_db) as session:
-        # Find today's entry or create one
-        statement = select(DailyHabit).where(
-            DailyHabit.user_id == current_user.id,
-            DailyHabit.date == today
-        )
-        habit_log = session.exec(statement).first()
-
-        if not habit_log:
-            habit_log = DailyHabit(user_id=current_user.id, date=today)
-            session.add(habit_log)
-
-        # Update specific field
-        if update.habit_type == 'water':
-            habit_log.water_glasses += update.value
-        elif update.habit_type == 'movement':
-            habit_log.movement_minutes += update.value
-
-        session.commit()
-        session.refresh(habit_log)
-        return habit_log
-
-
-@app.post("/ingest_data")
-def ingest_external_data(data: dict, current_user: User = Depends(get_current_user)):
-    """
-    Simulates fetching data from Google Health API.
-    In a real app, 'data' would contain the OAuth token.
-    Here, we just generate 30 days of mock history for the user.
-    """
-    if data.get('source') != 'google_health':
-        raise HTTPException(status_code=400, detail="Unsupported source")
-
-    with Session(engine_db) as session:
-        # Generate 30 mock entries
-        for i in range(30):
-            date = datetime.now() - timedelta(days=i)
-            # Create a mock reading
-            log = GlucoseLog(
-                user_id=current_user.id,
-                level=random.randint(75, 150),
-                timestamp=date
-            )
-            session.add(log)
-        session.commit()
-
-    return {"status": "success", "imported_count": 30}
+def log_habit(data: dict, current_user: User = Depends(get_current_user)):
+    return {"status": "ok"}
