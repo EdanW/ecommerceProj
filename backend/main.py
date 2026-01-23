@@ -11,7 +11,7 @@ from .models import GlucoseLog
 import random
 from datetime import datetime, timedelta
 
-# database:
+# database: test
 # Database Setup
 sqlite_file_name = "backend/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
