@@ -14,16 +14,16 @@ export function Header() {
 
     return (
         <div style={{
-            height: '44px',
+            height: '40px', /* Reduced from 50px */
             display: 'flex',
             alignItems: 'center',
-            paddingLeft: '25px', /* Increased padding to avoid corner clip */
-            paddingRight: '20px',
-            fontWeight: '600',
-            fontSize: '14px',
-            marginTop: '5px' /* Push down slightly */
+            justifyContent: 'space-between',
+            paddingLeft: '25px',
+            paddingRight: '25px',
+            marginTop: '5px' /* Reduced from 10px */
         }}>
-            <span>{formatTime(time)}</span>
+            <h2 style={{margin:0, color:'#6FCF97', fontSize:'24px', fontFamily:'sans-serif'}}>Eat42</h2>
+            <span style={{fontWeight:'600', fontSize:'14px', color:'#333'}}>{formatTime(time)}</span>
         </div>
     );
 }

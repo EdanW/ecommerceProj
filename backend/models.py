@@ -8,9 +8,8 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True)
     hashed_password: str
 
-    # New Fields
-    first_name: Optional[str] = None  # Added
-    last_name: Optional[str] = None  # Added
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     age: Optional[int] = None
@@ -18,19 +17,28 @@ class User(SQLModel, table=True):
     weight: Optional[float] = None
     pregnancy_start_date: Optional[str] = None
     medical_notes: Optional[str] = None
+    profile_picture: Optional[str] = Field(default=None)  # New: Stores Base64 string
+
 
 class GlucoseLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     level: int
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str
 
 
-# Add this class to your existing models.py
 class DailyHabit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
-    date: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
+    date: str
     water_glasses: int = 0
     movement_minutes: int = 0
     sleep_hours: float = 0.0
+
+class CravingFeedback(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    craving_input: str
+    ai_suggestion: str
+    is_liked: bool
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
