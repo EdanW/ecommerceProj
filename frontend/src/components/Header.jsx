@@ -13,15 +13,7 @@ export function Header() {
     };
 
     return (
-        <div style={{
-            height: '40px', /* Reduced from 50px */
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingLeft: '25px',
-            paddingRight: '25px',
-            marginTop: '5px' /* Reduced from 10px */
-        }}>
+        <div className="header-container">
             <h2 style={{margin:0, color:'#6FCF97', fontSize:'24px', fontFamily:'sans-serif'}}>Eat42</h2>
             <span style={{fontWeight:'600', fontSize:'14px', color:'#333'}}>{formatTime(time)}</span>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { User, LogOut, Save, Edit2, X, Camera } from 'lucide-react';
+import { User, LogOut, Save, Edit2, X, Camera, Trash2 } from 'lucide-react';
+import { validateProfileData } from '../utils/validations.js';
 
 const API_URL = 'http://localhost:8000';
 
@@ -8,6 +9,7 @@ export function Profile({ setView, token, logout }) {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [msg, setMsg] = useState('');
+    const [error, setError] = useState(''); // New state for validation errors
 
     const [profile, setProfile] = useState({
         username: '', first_name: '', last_name: '',
@@ -39,6 +41,14 @@ export function Profile({ setView, token, logout }) {
     };
 
     const handleSave = async () => {
+        setMsg(''); setError('');
+        const validationError = validateProfileData(profile);
+
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
         try {
             const cleanNum = (val) => (val === '' || val == null ? null : Number(val));
             const cleanStr = (val) => (val === '' ? null : val);
@@ -64,6 +74,17 @@ export function Profile({ setView, token, logout }) {
         } catch (e) { setMsg('Error Saving'); }
     };
 
+    const handleDeleteAccount = async () => {
+        if (confirm("Are you sure? This will delete all your data permanently.")) {
+            try {
+                await axios.delete(`${API_URL}/delete_account`, { headers: { Authorization: `Bearer ${token}` } });
+                logout(); // Log out immediately after deletion
+            } catch (e) {
+                alert("Failed to delete account");
+            }
+        }
+    };
+
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -85,19 +106,20 @@ export function Profile({ setView, token, logout }) {
                 {!isEditing ? (
                     <button className="icon-btn" onClick={() => setIsEditing(true)} style={{color:'var(--pink)'}}><Edit2 size={18}/> Edit</button>
                 ) : (
-                    <button className="icon-btn" onClick={() => { setIsEditing(false); loadData(); }} style={{color:'#888'}}><X size={18}/> Cancel</button>
+                    <button className="icon-btn" onClick={() => { setIsEditing(false); loadData(); setError(''); }} style={{color:'#888'}}><X size={18}/> Cancel</button>
                 )}
             </div>
 
             {msg && <div className="status-badge green" style={{marginBottom:'15px'}}>{msg}</div>}
+            {error && <div className="status-badge orange" style={{marginBottom:'15px'}}>{error}</div>}
 
             <div className="card">
                 <div style={{textAlign:'center', marginBottom:'20px'}}>
-                    <div style={{width:'90px', height:'90px', borderRadius:'50%', background:'#F5F5F5', margin:'0 auto 10px', overflow:'hidden', position:'relative', border:'3px solid white', boxShadow:'0 5px 15px rgba(0,0,0,0.1)'}}>
+                    <div className="profile-pic-container" style={{margin: '0 auto 10px'}}>
                         {profile.profile_picture ? (
                             <img src={profile.profile_picture} style={{width:'100%', height:'100%', objectFit:'cover'}} />
                         ) : (
-                            <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#ccc'}}><User size={40}/></div>
+                            <div className="flex-center" style={{height:'100%', color:'#ccc'}}><User size={40}/></div>
                         )}
                         {isEditing && <input type="file" accept="image/*" onChange={handleImageUpload} style={{position:'absolute', top:0, left:0, width:'100%', height:'100%', opacity:0, cursor:'pointer'}} />}
                     </div>
@@ -148,7 +170,14 @@ export function Profile({ setView, token, logout }) {
                     </div>
                 )}
             </div>
-            <button className="back-btn" onClick={logout} style={{marginTop:'20px', color:'#FF5252', width:'100%', justifyContent:'center'}}><LogOut size={18}/> Log Out</button>
+
+            <button className="back-btn" onClick={logout} style={{marginTop:'20px', color:'#888', width:'100%', justifyContent:'center'}}>
+                <LogOut size={18}/> Log Out
+            </button>
+
+            <button className="back-btn" onClick={handleDeleteAccount} style={{marginTop:'10px', color:'#FF5252', width:'100%', justifyContent:'center', fontSize:'12px'}}>
+                <Trash2 size={14}/> Delete Account
+            </button>
         </div>
     );
 }

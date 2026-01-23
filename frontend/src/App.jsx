@@ -3,10 +3,12 @@ import axios from 'axios';
 import { Auth } from './components/Auth';
 import { Profile } from './components/Profile';
 import { Header } from './components/Header';
-import './App.css';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { GlucoseChart, FoodLog } from './components/Placeholders';
-import { Activity, Utensils, Home, User, LineChart, ScrollText } from 'lucide-react';
+import {
+    Activity, Utensils, Home, User, LineChart,
+    ScrollText, ThumbsUp, ThumbsDown
+} from 'lucide-react';
+import './App.css';
 
 const API_URL = 'http://localhost:8000';
 
@@ -14,11 +16,11 @@ function App() {
   const [token, setToken] = useState(sessionStorage.getItem('token'));
   const [view, setView] = useState('dashboard');
 
-    const logout = () => {
-        sessionStorage.removeItem('token'); // changed from localStorage
-        setToken(null);
-        setView('dashboard');
-    };
+  const logout = () => {
+      sessionStorage.removeItem('token');
+      setToken(null);
+      setView('dashboard');
+  };
 
   return (
     <div className="app-container">
@@ -33,7 +35,6 @@ function App() {
                 {view === 'profile' && <Profile setView={setView} token={token} logout={logout} />}
                 {view === 'glucose' && <GlucoseChart />}
                 {view === 'foodlog' && <FoodLog />}
-                {/* Navigation only shows when logged in */}
                 <BottomNav setView={setView} active={view} />
             </>
         )}
@@ -44,15 +45,16 @@ function App() {
 
 function Dashboard({ setView, token, logout }) {
     const [data, setData] = useState(null);
+
     const getGreeting = () => {
       const hour = new Date().getHours();
       if (hour < 12) return "☀️ Good Morning";
       if (hour < 18) return "🌅 Good Afternoon";
       if (hour < 21) return "✨ Good Evening";
       return "💤 Good Night";
-  };
+    };
+
     useEffect(() => {
-        // ZOMBIE FIX
         const interceptor = axios.interceptors.response.use(r => r, e => {
             if (e.response?.status === 401) logout();
             return Promise.reject(e);
@@ -67,7 +69,7 @@ function Dashboard({ setView, token, logout }) {
 
     return (
         <div className="content">
-          <div className="greeting" style={{marginTop: '10px'}}>
+          <div className="greeting mt-10">
             <p className="subtext">{getGreeting()} {data.display_name}</p>
             <h2>{data.wellness_message}</h2>
           </div>
@@ -75,17 +77,15 @@ function Dashboard({ setView, token, logout }) {
         <div className="card progress-card">
             {data.pregnancy_data ? (
                 <>
-                    {/* 3. Spacing Fixed */}
-                    <div className="row" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <div className="flex-between">
                       <span style={{fontWeight:'bold'}}>Week {data.pregnancy_data.week}</span>
                       <span className="pink-tag">Trimester {data.pregnancy_data.trimester}</span>
                     </div>
                     <div className="progress-bar"><div style={{width: `${(data.pregnancy_data.week / 40) * 100}%`}}></div></div>
-                    {/* 4. Dynamic Baby Size */}
                     <p className="tiny-text">Your baby is about the size of {data.pregnancy_data.size}</p>
                 </>
             ) : (
-                <div style={{textAlign:'center', padding:'10px'}}>
+                <div className="text-center" style={{padding:'10px'}}>
                     <p>Add your pregnancy start date to see your progress!</p>
                     <button className="crave-btn" style={{padding:'10px', fontSize:'14px'}} onClick={() => setView('profile')}>Add Date</button>
                 </div>
@@ -107,12 +107,12 @@ function CravingTool({ setView, token }) {
     const [input, setInput] = useState('');
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [feedbackGiven, setFeedbackGiven] = useState(false); // Track if user voted
+    const [feedbackGiven, setFeedbackGiven] = useState(false);
 
     const checkCraving = async () => {
         if (!input.trim()) return;
         setLoading(true);
-        setFeedbackGiven(false); // Reset feedback for new search
+        setFeedbackGiven(false);
         try {
             const res = await axios.post(`${API_URL}/analyze_craving`,
                 { food_name: input },
@@ -130,20 +130,17 @@ function CravingTool({ setView, token }) {
         try {
             await axios.post(`${API_URL}/feedback`, {
                 craving: input,
-                suggestion: result.alternative, // We save the suggestion specifically
+                suggestion: result.alternative,
                 is_liked: isLiked
             }, { headers: { Authorization: `Bearer ${token}` } });
-
-            setFeedbackGiven(true); // Show "Thank you"
-        } catch (e) {
-            console.error("Feedback failed", e);
-        }
+            setFeedbackGiven(true);
+        } catch (e) { console.error("Feedback failed", e); }
     };
 
     return (
         <div className="content craving-view">
             <button className="back-btn" onClick={() => setView('dashboard')}>← Back</button>
-            <h2 style={{marginTop: '0'}}>What are you in the mood for?</h2>
+            <h2 className="mt-0">What are you in the mood for?</h2>
 
             <div className="input-group" style={{marginTop: '20px'}}>
                 <input
@@ -158,7 +155,7 @@ function CravingTool({ setView, token }) {
             </div>
 
             {result && (
-                <div className="fade-in" style={{marginTop: '25px', background:'#F9FAFB', padding:'20px', borderRadius:'15px', border:'1px solid #eee'}}>
+                <div className="ai-feedback-box fade-in">
                   <div className={`status-badge ${result.safety === 'High Safety' ? 'green' : 'orange'}`} style={{display:'inline-block', marginBottom:'10px'}}>
                     {result.safety}
                   </div>
@@ -167,60 +164,43 @@ function CravingTool({ setView, token }) {
                     "{result.message}"
                   </p>
 
-                  <div style={{marginTop: '15px', background:'white', padding:'15px', borderRadius:'12px', borderLeft:'4px solid #6FCF97', boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
+                  <div className="suggestion-box">
                     <h4 style={{margin:'0 0 5px 0', color:'#6FCF97', fontSize:'14px'}}>💡 Better Option:</h4>
                     <p style={{margin:0, fontSize:'15px', color:'#555'}}>{result.alternative}</p>
                   </div>
 
-                  {/* FEEDBACK SECTION */}
-                  <div style={{marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                  <div className="flex-between" style={{marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px'}}>
                     <span className="tiny-text">Was this helpful?</span>
-
                     {!feedbackGiven ? (
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <button onClick={() => sendFeedback(false)} style={{background: 'white', border: '1px solid #eee', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#FF5252'}}>
-                                <ThumbsDown size={18} />
-                            </button>
-                            <button onClick={() => sendFeedback(true)} style={{background: 'white', border: '1px solid #eee', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#6FCF97'}}>
-                                <ThumbsUp size={18} />
-                            </button>
+                        <div className="gap-10" style={{display:'flex'}}>
+                            <button onClick={() => sendFeedback(false)} className="icon-btn" style={{border: '1px solid #eee', borderRadius: '8px', padding: '8px', color: '#FF5252'}}><ThumbsDown size={18} /></button>
+                            <button onClick={() => sendFeedback(true)} className="icon-btn" style={{border: '1px solid #eee', borderRadius: '8px', padding: '8px', color: '#6FCF97'}}><ThumbsUp size={18} /></button>
                         </div>
                     ) : (
                         <span className="tiny-text" style={{color: '#6FCF97', fontWeight: 'bold'}}>Thanks for your feedback!</span>
                     )}
                   </div>
-
                 </div>
             )}
         </div>
     );
 }
 
-
 function BottomNav({ setView, active }) {
   return (
     <div className="bottom-nav" style={{justifyContent: 'space-around', paddingBottom:'10px'}}>
-
-      {/* Home */}
       <div className={active === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>
         <Home size={24} strokeWidth={active === 'dashboard' ? 3 : 2} />
       </div>
-
-      {/* Glucose Chart */}
       <div className={active === 'glucose' ? 'active' : ''} onClick={() => setView('glucose')}>
         <LineChart size={24} strokeWidth={active === 'glucose' ? 3 : 2} />
       </div>
-
-      {/* Food Log (Now Standard Style) */}
       <div className={active === 'foodlog' ? 'active' : ''} onClick={() => setView('foodlog')}>
         <ScrollText size={24} strokeWidth={active === 'foodlog' ? 3 : 2} />
       </div>
-
-      {/* Profile */}
       <div className={active === 'profile' ? 'active' : ''} onClick={() => setView('profile')}>
         <User size={24} strokeWidth={active === 'profile' ? 3 : 2} />
       </div>
-
     </div>
   );
 }

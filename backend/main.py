@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import SQLModel, Session, create_engine, select, delete
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -14,10 +14,8 @@ sqlite_url = f"sqlite:///{sqlite_file_name}"
 connect_args = {"check_same_thread": False}
 engine_db = create_engine(sqlite_url, connect_args=connect_args)
 
-
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine_db)
-
 
 app = FastAPI()
 
@@ -28,7 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.on_event("startup")
 def on_startup():
@@ -221,3 +218,16 @@ def check_craving(request: CravingRequest, current_user: User = Depends(get_curr
 @app.post("/log_habit")
 def log_habit(data: dict, current_user: User = Depends(get_current_user)):
     return {"status": "ok"}
+
+
+@app.delete("/delete_account")
+def delete_account(current_user: User = Depends(get_current_user)):
+    with Session(engine_db) as session:
+        session.exec(delete(GlucoseLog).where(GlucoseLog.user_id == current_user.id))
+        session.exec(delete(DailyHabit).where(DailyHabit.user_id == current_user.id))
+        session.exec(delete(CravingFeedback).where(CravingFeedback.user_id == current_user.id))
+
+        session.delete(current_user)
+        session.commit()
+
+    return {"message": "Account deleted"}
