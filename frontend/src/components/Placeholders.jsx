@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { LineChart as LineChartIcon, ScrollText } from 'lucide-react';
 import {
-    LineChart as RechartsLineChart,
-    Line,
+    ScatterChart,
+    Scatter,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -12,36 +12,6 @@ import {
 } from 'recharts';
 
 const API_URL = 'http://localhost:8000';
-
-const pad = (value) => String(value).padStart(2, '0');
-
-const formatLocalDateTime = (date) => (
-    `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-);
-
-const parseLocalDateTime = (value) => {
-    if (!value) return null;
-    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-    if (!match) return null;
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-    const hours = Number(match[4]);
-    const minutes = Number(match[5]);
-    if (month < 1 || month > 12 || hours > 23 || minutes > 59) return null;
-    const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    if (Number.isNaN(date.getTime())) return null;
-    if (
-        date.getFullYear() !== year
-        || date.getMonth() !== month - 1
-        || date.getDate() !== day
-        || date.getHours() !== hours
-        || date.getMinutes() !== minutes
-    ) {
-        return null;
-    }
-    return date.toISOString();
-};
 
 const formatLocalLabel = (value) => {
     const date = new Date(value);
@@ -62,26 +32,43 @@ const formatTime24 = (value) => {
     return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+const roundDownToHalfHour = (value) => {
+    const rounded = new Date(value);
+    const minutes = rounded.getMinutes();
+    const roundedMinutes = minutes < 30 ? 0 : 30;
+    rounded.setMinutes(roundedMinutes, 0, 0);
+    return rounded;
+};
+
+const buildAxisTicks = (startMs, endMs, intervalMs) => {
+    if (!startMs || !endMs || endMs <= startMs || !intervalMs) return null;
+    const ticks = [];
+    for (let current = startMs; current <= endMs; current += intervalMs) {
+        ticks.push(current);
+    }
+    if (ticks[ticks.length - 1] !== endMs) {
+        ticks.push(endMs);
+    }
+    return ticks;
+};
+
 export function GlucoseChart({ token }) {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const [startLocal, setStartLocal] = useState(() => formatLocalDateTime(weekAgo));
-    const [endLocal, setEndLocal] = useState(() => formatLocalDateTime(now));
+    const [endTime] = useState(() => roundDownToHalfHour(new Date()));
     const [readings, setReadings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState('');
 
-    const startUtc = parseLocalDateTime(startLocal);
-    const endUtc = parseLocalDateTime(endLocal);
-    const validationError = !startUtc || !endUtc
-        ? 'Please select a valid start and end time.'
-        : (new Date(startUtc) > new Date(endUtc)
-            ? 'Start time must be before end time.'
-            : '');
-    const displayError = validationError || fetchError;
+    const startTime = new Date(endTime);
+    startTime.setHours(8, 0, 0, 0);
+    const startUtc = startTime.toISOString();
+    const endUtc = endTime.toISOString();
+    const startMs = startTime.getTime();
+    const endMs = endTime.getTime();
+    const axisTicks = buildAxisTicks(startMs, endMs, 2 * 60 * 60 * 1000);
+    const displayError = fetchError;
 
     useEffect(() => {
-        if (!token || validationError) return;
+        if (!token) return;
 
         let isActive = true;
         const fetchTrends = async () => {
@@ -107,82 +94,81 @@ export function GlucoseChart({ token }) {
 
         fetchTrends();
         return () => { isActive = false; };
-    }, [startUtc, endUtc, token, validationError]);
+    }, [startUtc, endUtc, token]);
 
-    const chartData = readings.map(reading => ({
-        timestamp: reading.timestamp_utc,
-        glucose_mg_dl: reading.glucose_mg_dl,
-        tag: reading.tag,
-        source: reading.source
-    }));
+    const chartData = readings.map(reading => {
+        const timestampMs = new Date(reading.timestamp_utc).getTime();
+        return {
+            timestamp: reading.timestamp_utc,
+            timestamp_ms: Number.isNaN(timestampMs) ? null : timestampMs,
+            glucose_mg_dl: reading.glucose_mg_dl,
+            tag: reading.tag,
+            source: reading.source
+        };
+    });
+    const chartHeight = Math.max(260, Math.min(360, chartData.length * 6 + 120));
 
     return (
         <div className="content">
             <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'15px'}}>
                 <div style={{width:'48px', height:'48px', background:'#F5F5F5', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                    <LineChartIcon size={26} color="#F48FB1"/>
+                    <LineChartIcon size={26} color="#6FCF97"/>
                 </div>
                 <div>
                     <h3 className="mt-0">Glucose Trends</h3>
-                    <p className="tiny-text" style={{marginTop:'4px'}}>Filter by time range to refresh the chart.</p>
+                    <p className="tiny-text" style={{marginTop:'4px'}}>Today&apos;s readings from 08:00 to now.</p>
                 </div>
             </div>
 
             <div className="card" style={{marginBottom:'16px'}}>
-                <div className="input-group" style={{gap:'10px', flexWrap:'wrap'}}>
-                    <div style={{display:'flex', flexDirection:'column', gap:'6px', flex:'1 1 220px'}}>
-                        <label className="tiny-text">Start (local)</label>
-                        <input
-                            className="modern-input"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="dd/mm/yyyy hh:mm"
-                            value={startLocal}
-                            onChange={(event) => setStartLocal(event.target.value)}
-                        />
-                    </div>
-                    <div style={{display:'flex', flexDirection:'column', gap:'6px', flex:'1 1 220px'}}>
-                        <label className="tiny-text">End (local)</label>
-                        <input
-                            className="modern-input"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="dd/mm/yyyy hh:mm"
-                            value={endLocal}
-                            onChange={(event) => setEndLocal(event.target.value)}
-                        />
-                    </div>
-                </div>
-                {displayError && <p className="tiny-text" style={{color:'#FF5252', marginTop:'8px'}}>{displayError}</p>}
-            </div>
-
-            <div className="card">
                 {loading && <p className="tiny-text">Loading glucose data...</p>}
                 {!loading && !displayError && chartData.length === 0 && (
                     <p className="tiny-text">No readings in this range yet.</p>
                 )}
+                {!loading && displayError && (
+                    <p className="tiny-text" style={{color:'#FF5252'}}>{displayError}</p>
+                )}
                 {!loading && chartData.length > 0 && (
-                    <ResponsiveContainer width="100%" height={260}>
-                        <RechartsLineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <ResponsiveContainer width="100%" height={chartHeight}>
+                        <ScatterChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
-                                dataKey="timestamp"
+                                dataKey="timestamp_ms"
                                 tickFormatter={formatTime24}
                                 minTickGap={20}
+                                type="number"
+                                scale="time"
+                                domain={startMs && endMs ? [startMs, endMs] : ['auto', 'auto']}
+                                ticks={axisTicks || undefined}
                             />
-                            <YAxis />
+                            <YAxis dataKey="glucose_mg_dl" domain={[50, 'auto']} />
                             <Tooltip
-                                labelFormatter={formatLocalLabel}
-                                formatter={(value) => [`${value} mg/dL`, 'Glucose']}
+                                content={({ active, payload }) => {
+                                    if (!active || !payload?.length) return null;
+                                    const point = payload[0]?.payload;
+                                    if (!point) return null;
+                                    const timeLabel = point.timestamp_ms ? formatTime24(point.timestamp_ms) : '';
+                                    const suffix = timeLabel ? ` @ ${timeLabel}` : '';
+                                    return (
+                                        <div
+                                            className="custom-tooltip"
+                                            style={{
+                                                background: '#FFFFFF',
+                                                border: '1px solid #E0E0E0',
+                                                borderRadius: '8px',
+                                                padding: '8px 12px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                                            }}
+                                        >
+                                            <p style={{ margin: 0, fontSize: '14px', color: '#111827' }}>
+                                                {`Glucose: ${point.glucose_mg_dl} mg/dL${suffix}`}
+                                            </p>
+                                        </div>
+                                    );
+                                }}
                             />
-                            <Line
-                                type="monotone"
-                                dataKey="glucose_mg_dl"
-                                stroke="#F48FB1"
-                                strokeWidth={2}
-                                dot={false}
-                            />
-                        </RechartsLineChart>
+                            <Scatter data={chartData} fill="#6FCF97" />
+                        </ScatterChart>
                     </ResponsiveContainer>
                 )}
             </div>
