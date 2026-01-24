@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, Session, create_engine, select, delete
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from .models import User, GlucoseLog, DailyHabit, CravingFeedback
+from .models import User, GlucoseLog, GlucoseReading, DailyHabit, CravingFeedback
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .simulator import get_current_glucose_level
 from .ai_engine import engine as ai_engine
@@ -171,6 +171,40 @@ def get_dashboard_data(current_user: User = Depends(get_current_user)):
     }
 
 
+@app.get("/glucose/trends")
+def get_glucose_trends(
+    start: datetime,
+    end: datetime,
+    current_user: User = Depends(get_current_user)
+):
+    if end < start:
+        raise HTTPException(status_code=400, detail="End must be after start")
+
+    with Session(engine_db) as session:
+        statement = (
+            select(GlucoseReading)
+            .where(
+                GlucoseReading.user_id == current_user.id,
+                GlucoseReading.timestamp_utc >= start,
+                GlucoseReading.timestamp_utc <= end
+            )
+            .order_by(GlucoseReading.timestamp_utc)
+        )
+        readings = session.exec(statement).all()
+
+    return {
+        "readings": [
+            {
+                "timestamp_utc": r.timestamp_utc.isoformat(),
+                "glucose_mg_dl": r.glucose_mg_dl,
+                "tag": r.tag,
+                "source": r.source
+            }
+            for r in readings
+        ]
+    }
+
+
 @app.put("/update_profile")
 def update_profile(data: RegisterRequest, current_user: User = Depends(get_current_user)):
     with Session(engine_db) as session:
@@ -225,6 +259,7 @@ def log_habit(data: dict, current_user: User = Depends(get_current_user)):
 def delete_account(current_user: User = Depends(get_current_user)):
     with Session(engine_db) as session:
         session.exec(delete(GlucoseLog).where(GlucoseLog.user_id == current_user.id))
+        session.exec(delete(GlucoseReading).where(GlucoseReading.user_id == current_user.id))
         session.exec(delete(DailyHabit).where(DailyHabit.user_id == current_user.id))
         session.exec(delete(CravingFeedback).where(CravingFeedback.user_id == current_user.id))
 
