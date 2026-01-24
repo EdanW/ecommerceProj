@@ -99,6 +99,12 @@ export function Profile({ setView, token, logout }) {
     if (loading) return <div className="content">Loading...</div>;
 
     const displayName = (profile.first_name || profile.last_name) ? `${profile.first_name} ${profile.last_name}` : profile.username;
+    const formatDate = (value) => {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
 
     return (
         <div className="content">
@@ -132,7 +138,7 @@ export function Profile({ setView, token, logout }) {
                         <InfoRow label="Phone" value={profile.phone} />
                         <div style={{display:'flex', gap:'20px'}}>
                             <InfoRow label="Age" value={profile.age} />
-                            <InfoRow label="Start Date" value={profile.pregnancy_start_date} />
+                            <InfoRow label="Start Date" value={formatDate(profile.pregnancy_start_date)} />
                         </div>
                         <div style={{display:'flex', gap:'20px'}}>
                             <InfoRow label="Height" value={profile.height ? `${profile.height} cm` : ''} />

@@ -27,6 +27,15 @@ class GlucoseLog(SQLModel, table=True):
     timestamp: str
 
 
+class GlucoseReading(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    timestamp_utc: datetime = Field(index=True, nullable=False)
+    glucose_mg_dl: int = Field(nullable=False)
+    tag: Optional[str] = None
+    source: str = Field(default="simulated", nullable=False)
+
+
 class DailyHabit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")

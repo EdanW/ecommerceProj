@@ -64,6 +64,22 @@ body {
     border-radius: 12px;
     background-color: #F8F9FA;
     font-size: 14px;
+    color: #333;
+}
+
+.modern-input::placeholder {
+    color: #888;
+}
+
+input,
+textarea,
+select {
+    color: #333;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #888;
 }
 
 .row-inputs {
