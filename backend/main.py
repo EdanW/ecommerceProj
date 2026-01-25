@@ -7,7 +7,7 @@ from datetime import datetime
 from .models import User, GlucoseLog, DailyHabit, CravingFeedback
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .simulator import get_current_glucose_level
-from .ai_engine import engine as ai_engine
+from .chat_layer_handling import engine as chat_layer_engine
 
 sqlite_file_name = "backend/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -71,6 +71,55 @@ def calculate_pregnancy_data(start_date_str):
         return {"week": weeks, "trimester": trimester, "size": size}
     except:
         return None
+
+## DELETE - This is placeholder for real recommendation engine <3 
+def mock_recommendation(model_input: dict) -> dict:
+    """
+    Temporary recommender until the real model exists.
+    Keeps a stable output format the frontend can rely on.
+    """
+    craving = (model_input or {}).get("craving", {})
+    categories = set(craving.get("categories", []))
+    meal_type = craving.get("meal_type", "snack")
+    glucose = (model_input or {}).get("glucose_level", None)
+
+    # Very simple rules (safe + deterministic)
+    if glucose is not None and glucose >= 140 and ("sweet" in categories or meal_type in {"dessert"}):
+        return {
+            "recommendation": "Greek yogurt with berries (small portion)",
+            "explanation": "Higher protein + fiber can satisfy sweet cravings with a gentler glucose impact.",
+            "alternatives": [
+                "Apple slices with peanut butter",
+                "Chia pudding (no added sugar)",
+                "A handful of nuts + a few strawberries"
+            ],
+            "warnings": ["If your glucose is high, keep carbs small and pair with protein/fat."]
+        }
+
+    if "salty" in categories or "savory" in categories:
+        return {
+            "recommendation": "Whole-grain toast with avocado + egg",
+            "explanation": "A savory option with protein/fat can curb cravings and support steadier glucose.",
+            "alternatives": [
+                "Hummus with veggie sticks",
+                "Cheese + cucumber/tomatoes",
+                "Roasted chickpeas (small portion)"
+            ],
+            "warnings": []
+        }
+
+    # Default (works for most snacks)
+    return {
+        "recommendation": "A balanced snack: cheese + veggies",
+        "explanation": "Protein + fiber helps with satiety and steadier glucose response.",
+        "alternatives": [
+            "Yogurt + cinnamon",
+            "Nuts + a small fruit",
+            "Egg + a few whole-grain crackers"
+        ],
+        "warnings": []
+    }
+
 
 
 # --- Models ---
@@ -203,16 +252,51 @@ def log_feedback(data: FeedbackRequest, current_user: User = Depends(get_current
         session.commit()
     return {"status": "recorded"}
 
+#   Maybe we will need to modify once real model is integrated - don't think so but to make sure (XX mark for me)
 @app.post("/analyze_craving")
 def check_craving(request: CravingRequest, current_user: User = Depends(get_current_user)):
     glucose_data = get_current_glucose_level()
+
     # Calculate current week or default to 28 if unknown
     week = 28
     preg_data = calculate_pregnancy_data(current_user.pregnancy_start_date)
     if preg_data:
-        week = preg_data['week']
+        week = preg_data["week"]
 
-    return ai_engine.analyze_craving(request.food_name, glucose_data['level'], week)
+    # Use user_id for multi-turn conversation tracking
+    user_id = str(current_user.id)
+
+    extraction = chat_layer_engine.extract_to_json(
+        user_message=request.food_name,
+        glucose_level=glucose_data["level"],
+        pregnancy_week=week,
+        user_id=user_id
+    )
+
+    # If incomplete return exactly what you returned before
+    if not extraction.get("complete"):
+        return extraction
+
+    # If complete attach a stub recommendation (until real model exists) (XX mark for me)
+    model_input = extraction.get("data", {})
+    model_response = mock_recommendation(model_input)
+
+    # Human-readable text
+    assistant_message = chat_layer_engine.translate_response(model_response, original_message=request.food_name)
+
+    # Return the original extraction plus extra fields 
+    return {
+        **extraction,
+        "model_response": model_response,
+        "assistant_message": assistant_message
+    }
+
+
+@app.post("/clear_chat")
+def clear_chat(current_user: User = Depends(get_current_user)):
+    user_id = str(current_user.id)
+    chat_layer_engine.clear_pending(str(current_user.id))
+    return {"message": "Chat cleared"}
 
 
 @app.post("/log_habit")
