@@ -27,6 +27,15 @@ class GlucoseLog(SQLModel, table=True):
     timestamp: str
 
 
+class GlucoseReading(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    timestamp_utc: datetime = Field(index=True, nullable=False)
+    glucose_mg_dl: int = Field(nullable=False)
+    tag: Optional[str] = None
+    source: str = Field(default="simulated", nullable=False)
+
+
 class DailyHabit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
@@ -42,3 +51,11 @@ class CravingFeedback(SQLModel, table=True):
     ai_suggestion: str
     is_liked: bool
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class FoodLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    meal_time: str
+    note: Optional[str] = None
+    created_date: str = Field(default_factory=lambda: datetime.now().date().isoformat())

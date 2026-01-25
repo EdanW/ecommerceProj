@@ -33,8 +33,8 @@ function App() {
                 {view === 'dashboard' && <Dashboard setView={setView} token={token} logout={logout} />}
                 {view === 'craving' && <CravingTool setView={setView} token={token} />}
                 {view === 'profile' && <Profile setView={setView} token={token} logout={logout} />}
-                {view === 'glucose' && <GlucoseChart />}
-                {view === 'foodlog' && <FoodLog />}
+                {view === 'glucose' && <GlucoseChart token={token} />}
+                {view === 'foodlog' && <FoodLog token={token} />}
                 <BottomNav setView={setView} active={view} />
             </>
         )}

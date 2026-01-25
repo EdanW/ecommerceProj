@@ -1,14 +1,16 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, create_engine, select, delete
+from sqlalchemy import desc
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from .models import User, GlucoseLog, DailyHabit, CravingFeedback
+from .models import User, GlucoseLog, GlucoseReading, DailyHabit, CravingFeedback, FoodLog
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .simulator import get_current_glucose_level
 from .chat_layer_handling import engine as chat_layer_engine
 
+# Database Setup
 sqlite_file_name = "backend/database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 connect_args = {"check_same_thread": False}
@@ -151,6 +153,10 @@ class FeedbackRequest(BaseModel):
     suggestion: str
     is_liked: bool
 
+class FoodLogRequest(BaseModel):
+    meal_time: str
+    note: Optional[str] = None
+
 # --- Routes ---
 
 @app.post("/register")
@@ -216,6 +222,40 @@ def get_dashboard_data(current_user: User = Depends(get_current_user)):
             "medical_notes": current_user.medical_notes,
             "profile_picture": current_user.profile_picture
         }
+    }
+
+
+@app.get("/glucose/trends")
+def get_glucose_trends(
+    start: datetime,
+    end: datetime,
+    current_user: User = Depends(get_current_user)
+):
+    if end < start:
+        raise HTTPException(status_code=400, detail="End must be after start")
+
+    with Session(engine_db) as session:
+        statement = (
+            select(GlucoseReading)
+            .where(
+                #GlucoseReading.user_id == current_user.id,
+                GlucoseReading.timestamp_utc >= start,
+                GlucoseReading.timestamp_utc <= end
+            )
+            .order_by(GlucoseReading.timestamp_utc)
+        )
+        readings = session.exec(statement).all()
+
+    return {
+        "readings": [
+            {
+                "timestamp_utc": r.timestamp_utc.isoformat(),
+                "glucose_mg_dl": r.glucose_mg_dl,
+                "tag": r.tag,
+                "source": r.source
+            }
+            for r in readings
+        ]
     }
 
 
@@ -299,6 +339,108 @@ def clear_chat(current_user: User = Depends(get_current_user)):
     return {"message": "Chat cleared"}
 
 
+@app.get("/food_logs/today")
+def list_today_food_logs(current_user: User = Depends(get_current_user)):
+    today = datetime.now().date().isoformat()
+    with Session(engine_db) as session:
+        statement = (
+            select(FoodLog)
+            .where(
+                #FoodLog.user_id == current_user.id,
+                FoodLog.created_date == today
+            )
+            .order_by(FoodLog.meal_time)
+        )
+        entries = session.exec(statement).all()
+
+    return {
+        "entries": [
+            {
+                "id": entry.id,
+                "meal_time": entry.meal_time,
+                "note": entry.note,
+                "created_date": entry.created_date
+            }
+            for entry in entries
+        ]
+    }
+
+
+@app.get("/food_logs/today/latest")
+def get_latest_food_log(current_user: User = Depends(get_current_user)):
+    today = datetime.now().date().isoformat()
+    with Session(engine_db) as session:
+        all_entries_today = session.exec(
+            select(FoodLog).where(FoodLog.created_date == today)
+        ).all()
+        statement = (
+            select(FoodLog)
+            .where(
+                FoodLog.user_id == current_user.id,
+                FoodLog.created_date == today
+            )
+            .order_by(desc(FoodLog.meal_time))
+            .limit(1)
+        )
+        entry = session.exec(statement).first()
+        if not entry and all_entries_today:
+            fallback_entry = session.exec(
+                select(FoodLog)
+                .where(FoodLog.created_date == today)
+                .order_by(desc(FoodLog.meal_time))
+                .limit(1)
+            ).first()
+            entry = fallback_entry
+
+    if not entry:
+        return {"entry": None}
+
+    return {
+        "entry": {
+            "id": entry.id,
+            "meal_time": entry.meal_time,
+            "note": entry.note,
+            "created_date": entry.created_date
+        }
+    }
+
+
+@app.post("/food_logs")
+def create_food_log(data: FoodLogRequest, current_user: User = Depends(get_current_user)):
+    if not data.meal_time:
+        raise HTTPException(status_code=400, detail="Meal time is required")
+
+    try:
+        datetime.strptime(data.meal_time, "%H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Meal time must be HH:MM")
+
+    note = data.note.strip() if data.note else None
+    if note and len(note) > 200:
+        raise HTTPException(status_code=400, detail="Note must be 200 characters or less")
+
+    new_entry = FoodLog(
+        user_id=current_user.id,
+        meal_time=data.meal_time,
+        note=note,
+        created_date=datetime.now().date().isoformat()
+    )
+
+    with Session(engine_db) as session:
+        session.add(new_entry)
+        session.commit()
+        session.refresh(new_entry)
+
+    return {
+        "entry": {
+            "id": new_entry.id,
+            "meal_time": new_entry.meal_time,
+            "note": new_entry.note,
+            "created_date": new_entry.created_date
+        }
+    }
+
+
 @app.post("/log_habit")
 def log_habit(data: dict, current_user: User = Depends(get_current_user)):
     return {"status": "ok"}
@@ -308,8 +450,10 @@ def log_habit(data: dict, current_user: User = Depends(get_current_user)):
 def delete_account(current_user: User = Depends(get_current_user)):
     with Session(engine_db) as session:
         session.exec(delete(GlucoseLog).where(GlucoseLog.user_id == current_user.id))
+        session.exec(delete(GlucoseReading).where(GlucoseReading.user_id == current_user.id))
         session.exec(delete(DailyHabit).where(DailyHabit.user_id == current_user.id))
         session.exec(delete(CravingFeedback).where(CravingFeedback.user_id == current_user.id))
+        session.exec(delete(FoodLog).where(FoodLog.user_id == current_user.id))
 
         session.delete(current_user)
         session.commit()
