@@ -51,3 +51,11 @@ class CravingFeedback(SQLModel, table=True):
     ai_suggestion: str
     is_liked: bool
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class FoodLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    meal_time: str
+    note: Optional[str] = None
+    created_date: str = Field(default_factory=lambda: datetime.now().date().isoformat())
