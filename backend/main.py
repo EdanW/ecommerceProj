@@ -286,6 +286,9 @@ def list_today_food_logs(current_user: User = Depends(get_current_user)):
 def get_latest_food_log(current_user: User = Depends(get_current_user)):
     today = datetime.now().date().isoformat()
     with Session(engine_db) as session:
+        all_entries_today = session.exec(
+            select(FoodLog).where(FoodLog.created_date == today)
+        ).all()
         statement = (
             select(FoodLog)
             .where(
@@ -296,6 +299,14 @@ def get_latest_food_log(current_user: User = Depends(get_current_user)):
             .limit(1)
         )
         entry = session.exec(statement).first()
+        if not entry and all_entries_today:
+            fallback_entry = session.exec(
+                select(FoodLog)
+                .where(FoodLog.created_date == today)
+                .order_by(desc(FoodLog.meal_time))
+                .limit(1)
+            ).first()
+            entry = fallback_entry
 
     if not entry:
         return {"entry": None}
