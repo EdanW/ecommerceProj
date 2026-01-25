@@ -34,7 +34,7 @@ function App() {
                 {view === 'craving' && <CravingTool setView={setView} token={token} />}
                 {view === 'profile' && <Profile setView={setView} token={token} logout={logout} />}
                 {view === 'glucose' && <GlucoseChart token={token} />}
-                {view === 'foodlog' && <FoodLog />}
+                {view === 'foodlog' && <FoodLog token={token} />}
                 <BottomNav setView={setView} active={view} />
             </>
         )}
