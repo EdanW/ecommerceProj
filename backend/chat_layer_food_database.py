@@ -185,7 +185,7 @@ FOOD_DATABASE = {
     "nutella": {"categories": ["sweet", "creamy"], "meal_type": "snack"},
     
     # ==================== FAST FOOD & FRIED ====================
-    "fries": {"categories": ["salty", "hot", "crunchy"], "meal_type": "snack"},
+    "fries": {"categories": ["salty", "hot"], "meal_type": "snack"},
     "french fries": {"categories": ["salty", "hot", "crunchy"], "meal_type": "snack"},
     "curly fries": {"categories": ["salty", "hot", "crunchy"], "meal_type": "snack"},
     "sweet potato fries": {"categories": ["sweet", "hot", "crunchy"], "meal_type": "snack"},

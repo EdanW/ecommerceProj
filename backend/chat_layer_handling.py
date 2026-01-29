@@ -1,27 +1,33 @@
 """
-Chat layer for AI Engine for Gestational Diabetes Craving Assistant
-=====================================================
+Chat layer for the Gestational Diabetes Craving Assistant (Eat42).
 
-This module parses user cravings using keyword matching.
+Parses a user's free-text craving into a structured JSON payload for the
+recommendation model, with negation-aware extraction and short follow-ups
+when required fields are missing.
 
-Features:
-- 100% in-house parsing (no API calls)
-- Keyword-based food and category detection
-- Smart meal type inference
-- Follow-up questions when info is incomplete
-- NEGATION DETECTION: "I don't want X" → excluded_foods
-- English only
-
-Project: Eat42 - Gestational Diabetes Support App
+Language: English
 """
 
-import re
+# =============================================================================
+## STANDARD LIBRARY IMPORTS ##
+# =============================================================================
+
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple, List, Set
 
-# Import from our food database
+# =============================================================================
+## THIRD-PARTY IMPORTS ##
+# =============================================================================
+
+import spacy
+from spacy.matcher import PhraseMatcher
+
+# =============================================================================
+## FOOD DATABASE IMPORTS ##
+# =============================================================================
+
 from .chat_layer_food_database import (
     FOOD_DATABASE,
     CATEGORY_KEYWORDS,
@@ -29,305 +35,413 @@ from .chat_layer_food_database import (
     INTENSITY_KEYWORDS,
 )
 
-## CONFIGURATION ## 
+# =============================================================================
+## CONFIG ##
+# =============================================================================
 
 TIMEZONE = ZoneInfo("Asia/Jerusalem")
-PENDING_TTL_SECONDS = 600  # Follow-up state expires after 10 minutes
+PENDING_TTL_SECONDS = 600
 
-# Negation phrases to detect "I don't want X"
-NEGATION_PHRASES = [
-    "don't want", "dont want", "do not want",
-    "don't like", "dont like", "do not like",
-    "don't feel like", "dont feel like", "do not feel like",
-    "not in the mood for", "not craving",
-    "no ", "not ", "never ", "hate ", "hates ",
-    "can't stand", "cant stand", "cannot stand",
-    "sick of", "tired of", "avoid", "avoiding",
-    "allergic to", "intolerant to",
-    "stay away from", "keep away from",
-    "without ", "except ", "but not ", "anything but ",
-]
-
-## LOGGING SETUP ##
+# =============================================================================
+## LOGGING ##
+# =============================================================================
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
 if not logger.handlers:
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
     logger.addHandler(handler)
 
+# =============================================================================
+## SPACY INITIALIZATION ##
+# =============================================================================
 
-## HELPER FUNCTIONS ##
+try:
+    nlp = spacy.load("en_core_web_sm")
+    logger.info("SpaCy model loaded: en_core_web_sm")
+except OSError:
+    logger.warning("SpaCy model not found. Downloading: en_core_web_sm")
+    import subprocess
+
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+    nlp = spacy.load("en_core_web_sm")
+    logger.info("SpaCy model downloaded and loaded: en_core_web_sm")
+
+# =============================================================================
+## MATCHERS ##
+# =============================================================================
+
+food_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+food_matcher.add("FOOD", [nlp.make_doc(food) for food in FOOD_DATABASE.keys()])
+
+category_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+for category, keywords in CATEGORY_KEYWORDS.items():
+    category_matcher.add(category, [nlp.make_doc(kw) for kw in keywords])
+
+meal_type_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+for meal_type, keywords in MEAL_TYPE_KEYWORDS.items():
+    meal_type_matcher.add(meal_type, [nlp.make_doc(kw) for kw in keywords])
+
+intensity_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+for intensity, keywords in INTENSITY_KEYWORDS.items():
+    intensity_matcher.add(intensity, [nlp.make_doc(kw) for kw in keywords])
+
+logger.info("Initialized matchers (foods=%d)", len(FOOD_DATABASE))
+
+# =============================================================================
+## NEGATION SIGNALS ##
+# =============================================================================
+
+NEGATION_TOKENS = {
+    "not",
+    "no",
+    "never",
+    "n't",
+    "dont",
+    "without",
+    "except",
+    "nothing",
+    "none",
+    "neither",
+    "nor",
+}
+
+NEGATION_LEMMAS = {
+    "hate",
+    "dislike",
+    "avoid",
+    "skip",
+    "exclude",
+    "reject",
+    "detest",
+    "loathe",
+}
+
+EXCLUSION_PHRASES = [
+    "don't want",
+    "dont want",
+    "do not want",
+    "don't like",
+    "dont like",
+    "do not like",
+    "don't feel like",
+    "dont feel like",
+    "not in the mood for",
+    "not craving",
+    "can't stand",
+    "cant stand",
+    "cannot stand",
+    "sick of",
+    "tired of",
+    "allergic to",
+    "intolerant to",
+    "stay away from",
+    "keep away from",
+    "anything but",
+    "but not",
+]
+
+# =============================================================================
+## TIME HELPERS ##
+# =============================================================================
+
 
 def get_time_of_day_from_time() -> str:
-    """Get time of day based on current time"""
-    now = datetime.now(TIMEZONE)
-    hour = now.hour
-    
+    """Return a coarse time-of-day bucket in the configured timezone."""
+    hour = datetime.now(TIMEZONE).hour
     if 5 <= hour < 12:
         return "morning"
-    elif 12 <= hour < 17:
+    if 12 <= hour < 17:
         return "afternoon"
-    elif 17 <= hour < 21:
+    if 17 <= hour < 21:
         return "evening"
-    else:
-        return "night"
+    return "night"
+
 
 def time_of_day_from_meal_type(meal_type: Optional[str]) -> Optional[str]:
-    """
-    Map meal_type to an appropriate time_of_day when the user implies a meal
-    Return None if we should fall back to current time
-    """
+    """Map a meal type to a compatible time-of-day bucket (or None if unknown)."""
     if not meal_type:
         return None
 
-    meal_type = meal_type.lower().strip()
-
-    if meal_type == "breakfast":
+    mt = meal_type.lower().strip()
+    if mt == "breakfast":
         return "morning"
-    if meal_type == "lunch":
+    if mt == "lunch":
         return "afternoon"
-    if meal_type == "dinner":
+    if mt == "dinner":
         return "evening"
-    # dessert is usually after dinner
-    if meal_type == "dessert":
+    if mt == "dessert":
         return "evening"
-
     return None
 
 
-def find_negation_context(message: str) -> List[Tuple[int, int]]:
+# =============================================================================
+## NEGATION DETECTION ##
+# =============================================================================
+
+
+def find_negated_tokens(doc: spacy.tokens.Doc) -> Set[int]:
     """
-    Find positions in the message where negation applies.
-    Returns list of (start, end) tuples marking negated regions.
+    Return token indices considered negated.
+
+    Uses dependency parsing (neg relation) when available, with fallbacks for:
+    - standalone negation tokens (e.g., "no", "without")
+    - negation-implying verbs (e.g., "avoid", "hate") applied to their objects
     """
-    message_lower = message.lower()
-    negated_regions = []
-    
-    for phrase in NEGATION_PHRASES:
+    negated_indices: Set[int] = set()
+
+    for token in doc:
+        if token.dep_ == "neg":
+            head = token.head
+            negated_indices.add(head.i)
+            for child in head.children:
+                if child.dep_ != "neg":
+                    negated_indices.add(child.i)
+                    for descendant in child.subtree:
+                        negated_indices.add(descendant.i)
+
+        if token.lower_ in NEGATION_TOKENS:
+            for i in range(token.i + 1, min(token.i + 5, len(doc))):
+                if doc[i].sent == token.sent:
+                    negated_indices.add(i)
+
+        if token.lemma_.lower() in NEGATION_LEMMAS:
+            for child in token.children:
+                if child.dep_ in ("dobj", "pobj", "attr", "oprd"):
+                    negated_indices.add(child.i)
+                    for descendant in child.subtree:
+                        negated_indices.add(descendant.i)
+
+    return negated_indices
+
+
+def check_exclusion_phrases(text: str) -> List[Tuple[int, int]]:
+    """
+    Return character spans following exclusion phrases (e.g., "allergic to", "sick of").
+
+    Used as a lightweight fallback when dependency parsing misses negation scope.
+    """
+    text_lower = text.lower()
+    spans: List[Tuple[int, int]] = []
+
+    for phrase in EXCLUSION_PHRASES:
         start = 0
         while True:
-            pos = message_lower.find(phrase, start)
+            pos = text_lower.find(phrase, start)
             if pos == -1:
                 break
-            # Define the negated region
+
             end_pos = pos + len(phrase) + 50
-            # Look for sentence boundaries
-            for punct in ['.', ',', '!', '?', ' but ', ' and i ', ' however ']:
-                punct_pos = message_lower.find(punct, pos + len(phrase))
+            for punct in [".", ",", "!", "?", " but ", " and i ", " however "]:
+                punct_pos = text_lower.find(punct, pos + len(phrase))
                 if punct_pos != -1 and punct_pos < end_pos:
                     end_pos = punct_pos
-            negated_regions.append((pos, end_pos))
+
+            spans.append((pos, end_pos))
             start = pos + 1
-    
-    return negated_regions
 
+    return spans
 
-def is_in_negated_region(position: int, negated_regions: List[Tuple[int, int]]) -> bool:
-    """Check if a position falls within any negated region."""
-    for start, end in negated_regions:
-        if start <= position <= end:
-            return True
-    return False
+# =============================================================================
+## READBALITY HELPERS ##
+# =============================================================================
 
-
-def extract_foods_with_negation(message: str) -> Tuple[List[str], List[str]]:
+def human_list(items: List[str]) -> str:
     """
-    Extract food items, separating wanted from excluded foods.
-    
-    Returns:
-        (wanted_foods, excluded_foods)
+    Convert ['a', 'b', 'c'] → 'a, b, and c'
     """
-    message_lower = message.lower()
-    wanted_foods = []
-    excluded_foods = []
-    
-    # Find negated regions
-    negated_regions = find_negation_context(message)
-    
-    # Sort by length (longest first) to avoid substring issues
-    sorted_foods = sorted(FOOD_DATABASE.keys(), key=len, reverse=True)
-    
-    # Track what we've already matched to avoid duplicates
-    matched_positions = set()
-    
-    for food in sorted_foods:
-        start = 0
-        while True:
-            pos = message_lower.find(food, start)
-            if pos == -1:
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
+# =============================================================================
+## EXTRACTION ##
+# =============================================================================
+
+
+def extract_foods_with_negation_spacy(
+    doc: spacy.tokens.Doc, text: str
+) -> Tuple[List[str], List[str]]:
+    """
+    Extract foods and classify them as wanted vs excluded.
+
+    Foods are matched via PhraseMatcher against FOOD_DATABASE keys. Exclusion is
+    determined by negation scope (dependency-based) and exclusion-phrase spans.
+    """
+    wanted_foods: List[str] = []
+    excluded_foods: List[str] = []
+
+    negated_indices = find_negated_tokens(doc)
+    exclusion_spans = check_exclusion_phrases(text)
+    matches = food_matcher(doc)
+
+    for _, start, end in matches:
+        span = doc[start:end]
+        food_text = span.text.lower()
+
+        if food_text in FOOD_DATABASE:
+            food_key = food_text
+        else:
+            lemmatized = " ".join(t.lemma_.lower() for t in span)
+            food_key = lemmatized if lemmatized in FOOD_DATABASE else food_text
+
+        is_negated = any(i in negated_indices for i in range(start, end))
+        span_start_char = span.start_char
+        for ex_start, ex_end in exclusion_spans:
+            if ex_start <= span_start_char <= ex_end:
+                is_negated = True
                 break
-            
-            # Check if this position overlaps with already matched food
-            food_range = set(range(pos, pos + len(food)))
-            if food_range & matched_positions:
-                start = pos + 1
-                continue
-            
-            # Mark these positions as matched
-            matched_positions.update(food_range)
-            
-            # Check if this food is in a negated context
-            if is_in_negated_region(pos, negated_regions):
-                if food not in excluded_foods:
-                    excluded_foods.append(food)
-            else:
-                if food not in wanted_foods:
-                    wanted_foods.append(food)
-            
-            start = pos + 1
-    
+
+        if is_negated:
+            if food_key not in excluded_foods:
+                excluded_foods.append(food_key)
+        else:
+            if food_key not in wanted_foods:
+                wanted_foods.append(food_key)
+
     return wanted_foods, excluded_foods
 
 
-def extract_categories_with_negation(message: str, wanted_foods: list, excluded_foods: list) -> Tuple[List[str], List[str]]:
+def extract_categories_with_negation_spacy(
+    doc: spacy.tokens.Doc,
+    text: str,
+    wanted_foods: List[str],
+    excluded_foods: List[str],
+) -> Tuple[List[str], List[str]]:
     """
-    Extract taste/texture categories, separating wanted from excluded.
+    Extract taste categories (e.g., sweet, salty) as wanted vs excluded.
 
-    Fixes:
-    - word-boundary matching for single-word keywords (prevents spicy->icy)
-    - scans ALL occurrences (not just first) so negation can apply correctly per mention
+    Categories come from:
+    - explicit mentions in text (PhraseMatcher)
+    - inference from matched foods via FOOD_DATABASE
+    Explicit mentions override inferred conflicts.
     """
-    message_lower = message.lower()
-    wanted_categories = set()
-    excluded_categories = set()
+    wanted_categories: Set[str] = set()
+    excluded_categories: Set[str] = set()
 
-    # Find negated regions
-    negated_regions = find_negation_context(message)
+    negated_indices = find_negated_tokens(doc)
+    exclusion_spans = check_exclusion_phrases(text)
 
-    # Categories from wanted foods
     for food in wanted_foods:
         if food in FOOD_DATABASE:
             wanted_categories.update(FOOD_DATABASE[food]["categories"])
 
-    # Explicit category keywords
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        for keyword in keywords:
-            keyword_l = keyword.lower().strip()
-            for pos in _find_all_keyword_positions(message_lower, keyword_l):
-                if is_in_negated_region(pos, negated_regions):
-                    excluded_categories.add(category)
-                else:
-                    wanted_categories.add(category)
+    explicit_wanted: Set[str] = set()
+    explicit_excluded: Set[str] = set()
+
+    matches = category_matcher(doc)
+    for match_id, start, end in matches:
+        category = nlp.vocab.strings[match_id]
+        span = doc[start:end]
+
+        is_negated = any(i in negated_indices for i in range(start, end))
+        span_start_char = span.start_char
+        for ex_start, ex_end in exclusion_spans:
+            if ex_start <= span_start_char <= ex_end:
+                is_negated = True
+                break
+
+        if is_negated:
+            explicit_excluded.add(category)
+        else:
+            explicit_wanted.add(category)
+
+    wanted_categories.update(explicit_wanted)
+    excluded_categories.update(explicit_excluded)
+
+    wanted_categories -= explicit_excluded
+    excluded_categories -= explicit_wanted
 
     return list(wanted_categories), list(excluded_categories)
 
 
-def extract_meal_type(message: str, foods: list) -> Optional[str]:
-    """Extract meal type from message or infer from foods."""
-    message_lower = message.lower()
-    
-    # First check for explicit meal type keywords
-    for meal_type, keywords in MEAL_TYPE_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in message_lower:
-                return meal_type
-    
-    # If we have foods, infer from the first food's typical meal type
+def extract_meal_type_spacy(doc: spacy.tokens.Doc, foods: List[str]) -> Optional[str]:
+    """Return meal type from explicit mention, else infer from the first detected food."""
+    matches = meal_type_matcher(doc)
+    if matches:
+        match_id, _, _ = matches[0]
+        return nlp.vocab.strings[match_id]
+
     if foods:
         first_food = foods[0]
         if first_food in FOOD_DATABASE:
             return FOOD_DATABASE[first_food]["meal_type"]
-    
-    # Can't determine meal type
+
     return None
 
 
-def extract_intensity(message: str) -> str:
-    """Extract craving intensity from message."""
-    message_lower = message.lower()
-    
-    for intensity, keywords in INTENSITY_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in message_lower:
-                return intensity
-    
-    return "medium"  # Default
-
-def _find_all_keyword_positions(text: str, keyword: str) -> List[int]:
-    """
-    Return all start positions where keyword appears in text.
-
-    Rules:
-    - Multi-word keywords (contain spaces): substring match, all occurrences.
-    - Single-word keywords: word-boundary regex match (prevents 'spicy' -> 'icy').
-    """
-    if not keyword:
-        return []
-
-    if " " in keyword:
-        positions = []
-        start = 0
-        while True:
-            pos = text.find(keyword, start)
-            if pos == -1:
-                break
-            positions.append(pos)
-            start = pos + 1
-        return positions
-
-    pattern = re.compile(rf"\b{re.escape(keyword)}\b")
-    return [m.start() for m in pattern.finditer(text)]
+def extract_intensity_spacy(doc: spacy.tokens.Doc) -> str:
+    """Return craving intensity ("high"/"low") from matches, else "medium"."""
+    matches = intensity_matcher(doc)
+    if matches:
+        match_id, _, _ = matches[0]
+        return nlp.vocab.strings[match_id]
+    return "medium"
 
 
-## MAIN CLASS ##
+# =============================================================================
+## ENGINE ##
+# =============================================================================
+
 
 class AIEngine:
-    """
-    AI Engine for craving extraction - NO API CALLS!
-    
-    Uses keyword matching for fast, free, unlimited parsing.
-    Now with NEGATION DETECTION!
-    """
-    
+    """Stateful extractor that converts user messages into a JSON payload for the model."""
+
     def __init__(self):
-        # Store partial data for multi-turn conversations
+        """Initialize in-memory follow-up state keyed by user_id."""
         self.pending_extractions: Dict[str, Dict[str, Any]] = {}
-        logger.info("AI Engine initialized (keyword-based, no API)")
-    
-    
+        logger.info("AI Engine initialized (SpaCy-based NLP)")
+
     def _cleanup_expired_pending(self):
-        """Remove expired pending extractions."""
+        """Drop pending follow-up states older than the configured TTL."""
         now = datetime.now()
         expired_users = [
-            user_id for user_id, data in self.pending_extractions.items()
-            if (now - data.get("created_at", now)) > timedelta(seconds=PENDING_TTL_SECONDS)
+            user_id
+            for user_id, data in self.pending_extractions.items()
+            if (now - data.get("created_at", now))
+            > timedelta(seconds=PENDING_TTL_SECONDS)
         ]
         for user_id in expired_users:
             del self.pending_extractions[user_id]
             logger.info("Cleared expired pending extraction for user")
-    
-    
+
     def extract_to_json(
-        self, 
-        user_message: str, 
-        glucose_level: int, 
+        self,
+        user_message: str,
+        glucose_level: int,
+        glucose_history: List[dict],
         pregnancy_week: int,
-        user_id: str = "default"
+        user_id: str = "default",
     ) -> Dict[str, Any]:
         """
-        Extract craving from user message using keyword matching.
-        
-        Returns:
-            - If complete: {"complete": True, "data": {...}}
-            - If need follow-up: {"complete": False, "follow_up_question": "...", ...}
+        Parse a user message into a structured payload.
+
+        If required information is missing, returns a follow-up question and stores
+        partial state keyed by user_id.
         """
-        # Cleanup expired pending states
         self._cleanup_expired_pending()
-        
-        # Check if this is a follow-up answer
+
         if user_id in self.pending_extractions:
-            return self._handle_follow_up(user_message, glucose_level, pregnancy_week, user_id)
-        
-        # Parse the message
-        wanted_foods, excluded_foods = extract_foods_with_negation(user_message)
-        wanted_categories, excluded_categories = extract_categories_with_negation(
-            user_message, wanted_foods, excluded_foods
+            return self._handle_follow_up(
+                user_message, glucose_level, glucose_history, pregnancy_week, user_id
+            )
+
+        doc = nlp(user_message)
+
+        wanted_foods, excluded_foods = extract_foods_with_negation_spacy(doc, user_message)
+        wanted_categories, excluded_categories = extract_categories_with_negation_spacy(
+            doc, user_message, wanted_foods, excluded_foods
         )
-        meal_type = extract_meal_type(user_message, wanted_foods)
-        intensity = extract_intensity(user_message)
+        meal_type = extract_meal_type_spacy(doc, wanted_foods)
+        intensity = extract_intensity_spacy(doc)
 
         craving_data = {
             "foods": wanted_foods,
@@ -337,151 +451,168 @@ class AIEngine:
             "meal_type": meal_type,
             "intensity": intensity,
         }
-        
-        # Check if we need to ask follow-up questions
-        # Case 1: No wanted foods AND no wanted categories - we don't understand what they want
+
+        # Case 1 - No wanted foods or categories specified, maybe exclusions
         if not wanted_foods and not wanted_categories:
-            # But if they said what they DON'T want acknowledge it
             if excluded_foods or excluded_categories:
+                if excluded_foods:
+                    excluded_text = human_list(excluded_foods)
+                    message = f"Got it — no {excluded_text}. What would you like instead?"
+                elif excluded_categories:
+                    excluded_text = human_list(excluded_categories)
+                    message = f"Got it — nothing {excluded_text}. What would you like instead?"
+                else:
+                    message = "Got it. What would you like instead?"
                 return {
-                    "complete": False,
-                    "follow_up_question": f"Got it, no {', '.join(excluded_foods) if excluded_foods else 'that'}! What would you like instead?",
-                    "missing_field": "food",
-                    "partial_data": craving_data
+                "complete": False,
+                "follow_up_question": message,
+                "missing_field": "food",
+                "partial_data": craving_data,
                 }
-            else:
-                return {
-                    "complete": False,
-                    "follow_up_question": "What kind of food are you craving? For example: chocolate, pizza, something sweet...",
-                    "missing_field": "food",
-                    "partial_data": craving_data
-                }
-        
-        # Case 2: Categories but no specific food AND no meal type
+
+            return {
+                "complete": False,
+                "follow_up_question": (
+                    "What kind of food are you craving? For example: chocolate, pizza, something sweet..."
+                ),
+                "missing_field": "food",
+                "partial_data": craving_data,
+            }
+
+        # Case 2 - Wanted categories but no foods, missing meal type
         if not wanted_foods and wanted_categories and not meal_type:
-            # Store for follow-up
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
                 "glucose_level": glucose_level,
                 "pregnancy_week": pregnancy_week,
                 "missing": "meal_type",
-                "created_at": datetime.now()
+                "created_at": datetime.now(),
             }
-            
+
             category_str = " and ".join(wanted_categories)
             return {
                 "complete": False,
-                "follow_up_question": f"Something {category_str} sounds good! Is this for a snack or a meal (breakfast/lunch/dinner)?",
+                "follow_up_question": (
+                    f"Something {category_str} sounds good! "
+                    "Is this for a snack or a meal (breakfast/lunch/dinner)?"
+                ),
                 "missing_field": "meal_type",
-                "partial_data": craving_data
+                "partial_data": craving_data,
             }
-        
-        # We have enough info
-        return self._build_complete_response(craving_data, glucose_level, pregnancy_week)
-    
-    
-    def _handle_follow_up(self, user_message: str, glucose_level: int, pregnancy_week: int, user_id: str) -> Dict[str, Any]:
-        """Handle user's answer to a follow-up question."""
-        
+
+        # Case 3 - All required info present
+        return self._build_complete_response(craving_data, glucose_level, glucose_history, pregnancy_week)
+
+    def _handle_follow_up(
+        self,
+        user_message: str,
+        glucose_level: int,
+        glucose_history: List[dict],
+        pregnancy_week: int,
+        user_id: str,
+    ) -> Dict[str, Any]:
+        """Handle the user's reply to a previous follow-up question and finalize extraction."""
         pending = self.pending_extractions.get(user_id)
         if not pending:
             self.pending_extractions.pop(user_id, None)
-            return self.extract_to_json(user_message, glucose_level, pregnancy_week, user_id + "_new")
+            return self.extract_to_json(
+                user_message, glucose_level, glucose_history, pregnancy_week, user_id + "_new"
+            )
 
         craving_data = pending["craving_data"]
         missing_field = pending.get("missing")
-        
-        # Remove from pending
         del self.pending_extractions[user_id]
-        
+
+        doc = nlp(user_message)
+
         if missing_field == "meal_type":
-            # Try to extract meal type from answer
-            meal_type = self._parse_meal_type_answer(user_message)
-            
+            meal_type = self._parse_meal_type_answer(doc, user_message)
             if meal_type:
                 craving_data["meal_type"] = meal_type
-                return self._build_complete_response(craving_data, glucose_level, pregnancy_week)
-            else:
-                # Still unclear, ask again
-                self.pending_extractions[user_id] = {
-                    "craving_data": craving_data,
-                    "glucose_level": glucose_level,
-                    "pregnancy_week": pregnancy_week,
-                    "missing": "meal_type",
-                    "created_at": datetime.now()
-                }
-                return {
-                    "complete": False,
-                    "follow_up_question": "Is this for a snack, breakfast, lunch, or dinner?",
-                    "missing_field": "meal_type",
-                    "partial_data": craving_data
-                }
-        
-        elif missing_field == "food":
-            # They should have given us a food - parse with negation
-            wanted_foods, excluded_foods = extract_foods_with_negation(user_message)
-            wanted_categories, excluded_categories = extract_categories_with_negation(user_message, wanted_foods, excluded_foods)
-            
-            # Merge with existing excluded items
+                return self._build_complete_response(
+                    craving_data, glucose_level, glucose_history, pregnancy_week
+                )
+
+            self.pending_extractions[user_id] = {
+                "craving_data": craving_data,
+                "glucose_level": glucose_level,
+                "pregnancy_week": pregnancy_week,
+                "missing": "meal_type",
+                "created_at": datetime.now(),
+            }
+            return {
+                "complete": False,
+                "follow_up_question": "Is this for a snack, breakfast, lunch, or dinner?",
+                "missing_field": "meal_type",
+                "partial_data": craving_data,
+            }
+
+        if missing_field == "food":
+            wanted_foods, excluded_foods = extract_foods_with_negation_spacy(doc, user_message)
+            wanted_categories, excluded_categories = extract_categories_with_negation_spacy(
+                doc, user_message, wanted_foods, excluded_foods
+            )
+
             existing_excluded_foods = craving_data.get("excluded_foods", [])
             existing_excluded_categories = craving_data.get("excluded_categories", [])
-            
             all_excluded_foods = list(set(existing_excluded_foods + excluded_foods))
             all_excluded_categories = list(set(existing_excluded_categories + excluded_categories))
-            
+
             if wanted_foods or wanted_categories:
                 craving_data["foods"] = wanted_foods
                 craving_data["categories"] = wanted_categories
                 craving_data["excluded_foods"] = all_excluded_foods
                 craving_data["excluded_categories"] = all_excluded_categories
-                craving_data["meal_type"] = extract_meal_type(user_message, wanted_foods)
-                
-                # If we now have food but no meal type ask for it
+                craving_data["meal_type"] = extract_meal_type_spacy(doc, wanted_foods)
+
                 if not craving_data["meal_type"] and not wanted_foods:
                     self.pending_extractions[user_id] = {
                         "craving_data": craving_data,
                         "glucose_level": glucose_level,
                         "pregnancy_week": pregnancy_week,
                         "missing": "meal_type",
-                        "created_at": datetime.now()
+                        "created_at": datetime.now(),
                     }
                     return {
                         "complete": False,
                         "follow_up_question": "Is this for a snack or a meal?",
                         "missing_field": "meal_type",
-                        "partial_data": craving_data
+                        "partial_data": craving_data,
                     }
-                
-                return self._build_complete_response(craving_data, glucose_level, pregnancy_week)
-            else:
-                # Still don't understand what they want
-                craving_data["excluded_foods"] = all_excluded_foods
-                craving_data["excluded_categories"] = all_excluded_categories
-                
-                if excluded_foods:
-                    return {
-                        "complete": False,
-                        "follow_up_question": f"Okay, no {', '.join(excluded_foods)}. What would you like instead?",
-                        "missing_field": "food",
-                        "partial_data": craving_data
-                    }
-                else:
-                    return {
-                        "complete": False,
-                        "follow_up_question": "I didn't catch that. What food are you craving? (e.g., chocolate, pizza, chips)",
-                        "missing_field": "food",
-                        "partial_data": craving_data
-                    }
-        
-        # Fallback so won't crash 
-        return self._build_complete_response(craving_data, glucose_level, pregnancy_week)
-    
-    
-    def _parse_meal_type_answer(self, message: str) -> Optional[str]:
-        """Parse meal type from user's follow-up answer."""
+
+                return self._build_complete_response(
+                    craving_data, glucose_level, glucose_history, pregnancy_week
+                )
+
+            craving_data["excluded_foods"] = all_excluded_foods
+            craving_data["excluded_categories"] = all_excluded_categories
+
+            if excluded_foods:
+                return {
+                    "complete": False,
+                    "follow_up_question": f"Okay, no {', '.join(excluded_foods)}. What would you like instead?",
+                    "missing_field": "food",
+                    "partial_data": craving_data,
+                }
+            return {
+                "complete": False,
+                "follow_up_question": (
+                    "I didn't catch that. What food are you craving? (e.g., chocolate, pizza, chips)"
+                ),
+                "missing_field": "food",
+                "partial_data": craving_data,
+            }
+
+        return self._build_complete_response(craving_data, glucose_level, glucose_history, pregnancy_week)
+
+    def _parse_meal_type_answer(self, doc: spacy.tokens.Doc, message: str) -> Optional[str]:
+        """Parse meal type from a short follow-up reply using matcher first, then synonyms."""
+        matches = meal_type_matcher(doc)
+        if matches:
+            match_id, _, _ = matches[0]
+            return nlp.vocab.strings[match_id]
+
         message_lower = message.lower().strip()
-        
-        # Direct matches
         meal_type_synonyms = {
             "snack": ["snack", "snacking", "between meals", "quick bite", "nishnush", "sweet treat"],
             "breakfast": ["breakfast", "morning", "brekkie"],
@@ -489,32 +620,31 @@ class AIEngine:
             "dinner": ["dinner", "supper", "evening", "tonight"],
             "dessert": ["dessert", "after dinner", "sweet ending"],
         }
-        
+
         for meal_type, synonyms in meal_type_synonyms.items():
             for synonym in synonyms:
                 if synonym in message_lower:
                     return meal_type
-        
-        # Check for "meal" - use time of day
-        if "meal" in message_lower:
-            time = get_time_of_day_from_time()
-            if time == "morning":
-                return "breakfast"
-            elif time == "afternoon":
-                return "lunch"
-            else:
-                return "dinner"
-        
-        return None
-    
-    
-    def _build_complete_response(self, craving_data: dict, glucose_level: int, pregnancy_week: int) -> Dict[str, Any]:
-        """Build the complete JSON response."""
-        
-        # If no meal_type, default to snack
-        meal_type = (craving_data.get("meal_type") or "snack").lower().strip()
 
-        # Prefer time_of_day implied by meal_type when relevant
+        if "meal" in message_lower:
+            tod = get_time_of_day_from_time()
+            if tod == "morning":
+                return "breakfast"
+            if tod == "afternoon":
+                return "lunch"
+            return "dinner"
+
+        return None
+
+    def _build_complete_response(
+        self,
+        craving_data: dict,
+        glucose_level: int,
+        glucose_history: List[dict],
+        pregnancy_week: int,
+    ) -> Dict[str, Any]:
+        """Build the final payload for the recommendation model."""
+        meal_type = (craving_data.get("meal_type") or "snack").lower().strip()
         mapped_time = time_of_day_from_meal_type(meal_type)
         time_of_day = mapped_time if mapped_time else get_time_of_day_from_time()
 
@@ -526,44 +656,33 @@ class AIEngine:
                 "excluded_categories": craving_data.get("excluded_categories", []),
                 "time_of_day": time_of_day,
                 "meal_type": meal_type,
-                "intensity": craving_data.get("intensity", "medium")
+                "intensity": craving_data.get("intensity", "medium"),
             },
             "glucose_level": glucose_level,
-            "pregnancy_week": pregnancy_week
+            "glucose_history": glucose_history,
+            "pregnancy_week": pregnancy_week,
         }
-        
-        return {
-            "complete": True,
-            "data": json_for_model
-        }
-    
-    
+
+        return {"complete": True, "data": json_for_model}
+
     def clear_pending(self, user_id: str = "default"):
-        """Clear any pending extraction for a user."""
+        """Clear pending follow-up state for a user."""
         if user_id in self.pending_extractions:
             del self.pending_extractions[user_id]
-    
-    
-    def translate_response(
-        self, 
-        model_response: Dict[str, Any],
-        original_message: str = ""
-    ) -> str:
-        """
-        Convert model's JSON recommendation to human natural language.
-        """
+
+    def translate_response(self, model_response: Dict[str, Any], original_message: str = "") -> str:
+        """Convert the model JSON response into a short user-facing sentence."""
         recommendation = model_response.get("recommendation", "a healthier alternative")
         explanation = model_response.get("explanation", "")
-        
+
         response = f"Based on your levels, here's a great choice: {recommendation}"
-        
         if explanation:
             response += f" — {explanation}"
-        
-        response += " 💜"
-        
-        return response
+        return response + " 💜"
 
 
+# =============================================================================
 ## MODULE INSTANCE ##
+# =============================================================================
+
 engine = AIEngine()

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, create_engine, select, delete
 from sqlalchemy import desc
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from .models import User, GlucoseLog, GlucoseReading, DailyHabit, CravingFeedback, FoodLog
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
@@ -73,6 +73,27 @@ def calculate_pregnancy_data(start_date_str):
         return {"week": weeks, "trimester": trimester, "size": size}
     except:
         return None
+    
+## Calculates the last N glucose readings for a user
+def get_last_n_glucose_readings(user_id: int, n: int = 10) -> list[dict]:
+    """Fetch the last N glucose readings for a user."""
+    with Session(engine_db) as session:  
+        statement = (
+            select(GlucoseReading)
+            .where(GlucoseReading.user_id == user_id)
+            .order_by(desc(GlucoseReading.timestamp_utc))
+            .limit(n)
+        )
+        readings = session.exec(statement).all()
+    
+    return [
+        {
+            "timestamp_utc": r.timestamp_utc.isoformat(),
+            "glucose_mg_dl": r.glucose_mg_dl,
+            "tag": r.tag,
+        }
+        for r in readings
+    ]
 
 ## DELETE - This is placeholder for real recommendation engine <3 
 def mock_recommendation(model_input: dict) -> dict:
@@ -296,6 +317,7 @@ def log_feedback(data: FeedbackRequest, current_user: User = Depends(get_current
 @app.post("/analyze_craving")
 def check_craving(request: CravingRequest, current_user: User = Depends(get_current_user)):
     glucose_data = get_current_glucose_level()
+    glucose_history = get_last_n_glucose_readings(current_user.id, n=10)
 
     # Calculate current week or default to 28 if unknown
     week = 28
@@ -309,6 +331,7 @@ def check_craving(request: CravingRequest, current_user: User = Depends(get_curr
     extraction = chat_layer_engine.extract_to_json(
         user_message=request.food_name,
         glucose_level=glucose_data["level"],
+        glucose_history=glucose_history,
         pregnancy_week=week,
         user_id=user_id
     )

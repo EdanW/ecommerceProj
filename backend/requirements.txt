@@ -7,3 +7,4 @@ python-multipart
 openai
 google-generativeai
 uvicorn[standard]
+spacy
