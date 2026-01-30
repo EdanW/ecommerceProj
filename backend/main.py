@@ -75,17 +75,16 @@ def calculate_pregnancy_data(start_date_str):
         return None
     
 ## Calculates the last N glucose readings for a user
-def get_last_n_glucose_readings(user_id: int, n: int = 10) -> list[dict]:
-    """Fetch the last N glucose readings for a user."""
-    with Session(engine_db) as session:  
+def get_last_n_glucose_readings(n: int = 10) -> list[dict]:
+    """Fetch the last N glucose readings from the database."""
+    with Session(engine_db) as session:
         statement = (
             select(GlucoseReading)
-            .where(GlucoseReading.user_id == user_id)
             .order_by(desc(GlucoseReading.timestamp_utc))
             .limit(n)
         )
         readings = session.exec(statement).all()
-    
+
     return [
         {
             "timestamp_utc": r.timestamp_utc.isoformat(),
@@ -317,7 +316,7 @@ def log_feedback(data: FeedbackRequest, current_user: User = Depends(get_current
 @app.post("/analyze_craving")
 def check_craving(request: CravingRequest, current_user: User = Depends(get_current_user)):
     glucose_data = get_current_glucose_level()
-    glucose_history = get_last_n_glucose_readings(current_user.id, n=10)
+    glucose_history = get_last_n_glucose_readings(n=10)
 
     # Calculate current week or default to 28 if unknown
     week = 28
