@@ -15,7 +15,8 @@ Language: English
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
-
+from .ds_service.utils.chat_layer_ds_utils import _analyze_glucose_trend
+from .ds_service.predict.predict import predict
 # =============================================================================
 ## LOCAL IMPORTS ##
 # =============================================================================
@@ -278,10 +279,12 @@ class AIEngine:
         pregnancy_week: int,
     ) -> Dict[str, Any]:
         """Build the final payload for the recommendation model."""
+        print("entered _build_complete_response")
         meal_type = (craving_data.get("meal_type") or "snack").lower().strip()
         mapped_time = time_of_day_from_meal_type(meal_type)
         time_of_day = mapped_time if mapped_time else get_time_of_day_from_time()
 
+        avg_glucose, trend = _analyze_glucose_trend(glucose_history)
         json_for_model = {
             "craving": {
                 "foods": craving_data.get("foods", []),
@@ -293,11 +296,15 @@ class AIEngine:
                 "intensity": craving_data.get("intensity", "medium"),
             },
             "glucose_level": glucose_level,
-            "glucose_history": glucose_history,
+            "glucose_avg": avg_glucose,
+            "glucose_trend": trend,
             "pregnancy_week": pregnancy_week,
         }
+        print("json_for_model: ", json_for_model)
 
-        return {"complete": True, "data": json_for_model}
+        model_response = predict(json_for_model)
+        print(model_response)
+        return {"complete": True, "data": model_response}
 
     def clear_pending(self, user_id: str = "default"):
         """Clear pending follow-up state for a user."""
