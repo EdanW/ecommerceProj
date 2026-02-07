@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+tzdata
 sqlmodel
 passlib[bcrypt]
 python-jose[cryptography]
