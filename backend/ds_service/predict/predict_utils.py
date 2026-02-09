@@ -1,4 +1,3 @@
-import json
 import pandas as pd
 from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
 from backend.ds_service.preprocessing.preprocessing import create_features
@@ -27,25 +26,6 @@ def filter_by_constraints(foods_df, user_input):
         )]
 
     return valid_foods
-
-
-def calculate_score(food_row, user_input):
-    """
-    Stage 2: Scoring Logic (The "Brain").
-    TODO In the future, this function will be replaced by: model.predict(features)
-    """
-    print("entered calculate_score")
-    score = 0
-    reason_components = []
-    
-    # Unpack user context
-    glucose = user_input.get('glucose_level', 90)
-    craving_foods = [f.lower() for f in user_input['craving'].get('foods', [])]
-    craving_categories = [c.lower() for c in user_input['craving'].get('categories', [])]
-    intensity = user_input['craving'].get('intensity', 5) # 1-10 scale
-    # get more attributes
-    
-    return {score, reason_components}
 
 
 def get_best_matches(user_json, candidates_df):

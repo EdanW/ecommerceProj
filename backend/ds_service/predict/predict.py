@@ -1,7 +1,6 @@
-import json
 import pandas as pd
 from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
-from .predict_utils import filter_by_constraints, calculate_score, get_best_matches
+from .predict_utils import filter_by_constraints, get_best_matches
 
 
 def predict(json_input):
@@ -26,15 +25,18 @@ def predict(json_input):
         item['name'] = name 
         food_list.append(item)
     food_df = pd.DataFrame(food_list)
-    print(food_df)
 
     #2. discard irrelevant foods
     valid_candidates = filter_by_constraints(food_df, json_input)
     
     best_matches = get_best_matches(json_input, valid_candidates)
 
+    # Guard
+    top_pick = best_matches.iloc[0]['name'] if not best_matches.empty else None
+    runner_up = best_matches.iloc[1]['name'] if len(best_matches) > 1 else None
+
     return {
-        "food": best_matches.iloc[0]['name'],
+        "food": top_pick,
         "reason": 'TODO',
-        "another_option": best_matches.iloc[1]['name']
+        "another_option": runner_up
     }

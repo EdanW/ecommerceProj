@@ -27,6 +27,7 @@ def encode_time_of_day(time_str):
     1 = Morning
     2 = Afternoon
     3 = Evening
+    4 = Night
     """
     if not time_str:
         return 0
@@ -35,7 +36,7 @@ def encode_time_of_day(time_str):
         "morning": 1,
         "afternoon": 2,
         "evening": 3,
-        "night": 3 # Map night to evening bucket
+        "night": 4
     }
     return mapping.get(time_str.lower(), 0) # Default to 0
 

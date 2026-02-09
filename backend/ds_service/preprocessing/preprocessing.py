@@ -1,8 +1,4 @@
-from backend.ds_service.preprocessing.preprocessing_utils import (
-    encode_trend,
-    encode_intensity,
-    encode_time_of_day,
-)
+from .preprocessing_utils import encode_trend, encode_intensity, encode_time_of_day
 
 
 def create_features(user_json, candidate_food):
