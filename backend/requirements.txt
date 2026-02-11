@@ -9,3 +9,4 @@ openai
 google-generativeai
 uvicorn[standard]
 spacy
+pandas

@@ -12,6 +12,10 @@ from .chat_layer_constants import (
 )
 
 
+SCOPE_BREAKERS = {",", ".", "!", "?", ";"}
+POSITIVE_SIGNALS = {"maybe", "perhaps", "possibly", "how about", "or"}
+
+
 def find_negated_tokens(doc: spacy.tokens.Doc) -> Set[int]:
     """
     Return token indices considered negated.
@@ -19,6 +23,9 @@ def find_negated_tokens(doc: spacy.tokens.Doc) -> Set[int]:
     Uses dependency parsing (neg relation) when available, with fallbacks for:
     - standalone negation tokens (e.g., "no", "without")
     - negation-implying verbs (e.g., "avoid", "hate") applied to their objects
+
+    Negation scope stops at punctuation (commas, periods, etc.).
+    Positive signals (maybe, perhaps) override negation for following tokens.
     """
     negated_indices: Set[int] = set()
 
@@ -35,6 +42,8 @@ def find_negated_tokens(doc: spacy.tokens.Doc) -> Set[int]:
         if token.lower_ in NEGATION_TOKENS:
             for i in range(token.i + 1, min(token.i + 5, len(doc))):
                 if doc[i].sent == token.sent:
+                    if doc[i].text in SCOPE_BREAKERS:
+                        break
                     negated_indices.add(i)
 
         if token.lemma_.lower() in NEGATION_LEMMAS:
@@ -43,6 +52,12 @@ def find_negated_tokens(doc: spacy.tokens.Doc) -> Set[int]:
                     negated_indices.add(child.i)
                     for descendant in child.subtree:
                         negated_indices.add(descendant.i)
+
+    # Positive signals override negation
+    for token in doc:
+        if token.lower_ in POSITIVE_SIGNALS:
+            for i in range(token.i, min(token.i + 4, len(doc))):
+                negated_indices.discard(i)
 
     return negated_indices
 

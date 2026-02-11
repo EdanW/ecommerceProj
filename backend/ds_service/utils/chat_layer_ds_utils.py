@@ -6,7 +6,6 @@ def _analyze_glucose_trend(history: List[dict]) -> tuple:
     Assumes history is sorted Newest -> Oldest
     Returns: avg_glucose, trend
     """
-    print("entered _analyze_glucose_trend")
     if not history:
         # Fallback if no history exists
         return 0, "stable"
@@ -32,5 +31,4 @@ def _analyze_glucose_trend(history: List[dict]) -> tuple:
         trend = "stable"
 
     avg_glucose_int = int(avg_glucose)
-    print("avg_glucose: ", avg_glucose_int, "trend: ", trend)
     return avg_glucose_int, trend

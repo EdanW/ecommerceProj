@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from .ds_service.utils.chat_layer_ds_utils import _analyze_glucose_trend
 from .ds_service.predict.predict import predict
+
 # =============================================================================
 ## LOCAL IMPORTS ##
 # =============================================================================
@@ -35,6 +36,7 @@ from .chat_layer_extractors import (
     extract_intensity_spacy,
     parse_meal_type_answer,
 )
+from .chat_layer_unsure import is_unsure_response, build_unsure_craving_data
 
 # =============================================================================
 ## LOGGING ##
@@ -91,9 +93,17 @@ class AIEngine:
         """
         self._cleanup_expired_pending()
 
+        # Pending follow-up takes priority
         if user_id in self.pending_extractions:
             return self._handle_follow_up(
                 user_message, glucose_level, glucose_history, pregnancy_week, user_id
+            )
+
+        # Unsure / undecided
+        if is_unsure_response(user_message):
+            craving_data = build_unsure_craving_data()
+            return self._build_complete_response(
+                craving_data, glucose_level, glucose_history, pregnancy_week
             )
 
         doc = nlp(user_message)
@@ -114,8 +124,9 @@ class AIEngine:
             "intensity": intensity,
         }
 
-        # Case 1 - No wanted foods or categories specified, maybe exclusions
+        # Case 1 - No wanted foods or categories specified (maybe exclusions, or totally vague)
         if not wanted_foods and not wanted_categories:
+            # 1A) User only gave exclusions 
             if excluded_foods or excluded_categories:
                 if excluded_foods:
                     excluded_text = human_list(excluded_foods)
@@ -125,18 +136,34 @@ class AIEngine:
                     message = f"Got it — nothing {excluded_text}. What would you like instead?"
                 else:
                     message = "Got it. What would you like instead?"
-                return {
-                "complete": False,
-                "follow_up_question": message,
-                "missing_field": "food",
-                "partial_data": craving_data,
+
+                self.pending_extractions[user_id] = {
+                    "craving_data": craving_data,
+                    "glucose_level": glucose_level,
+                    "pregnancy_week": pregnancy_week,
+                    "missing": "food",
+                    "created_at": datetime.now(),
                 }
+
+                return {
+                    "complete": False,
+                    "follow_up_question": message,
+                    "missing_field": "food",
+                    "partial_data": craving_data,
+                }
+
+            # 1B) No actionable input
+            self.pending_extractions[user_id] = {
+                "craving_data": craving_data,
+                "glucose_level": glucose_level,
+                "pregnancy_week": pregnancy_week,
+                "missing": "food",
+                "created_at": datetime.now(),
+            }
 
             return {
                 "complete": False,
-                "follow_up_question": (
-                    "What kind of food are you craving? For example: chocolate, pizza, something sweet..."
-                ),
+                "follow_up_question": "What kind of food are you craving?",
                 "missing_field": "food",
                 "partial_data": craving_data,
             }
@@ -183,6 +210,20 @@ class AIEngine:
 
         craving_data = pending["craving_data"]
         missing_field = pending.get("missing")
+
+        # User is unsure — pass what we have to the model
+        if is_unsure_response(user_message):
+            excluded_foods = craving_data.get("excluded_foods", [])
+            excluded_categories = craving_data.get("excluded_categories", [])
+            del self.pending_extractions[user_id]
+            unsure_data = build_unsure_craving_data(
+                excluded_foods=excluded_foods,
+                excluded_categories=excluded_categories,
+            )
+            return self._build_complete_response(
+                unsure_data, glucose_level, glucose_history, pregnancy_week
+            )
+
         del self.pending_extractions[user_id]
 
         doc = nlp(user_message)
@@ -191,25 +232,8 @@ class AIEngine:
             meal_type = self._parse_meal_type_answer(doc, user_message)
             if meal_type:
                 craving_data["meal_type"] = meal_type
-                return self._build_complete_response(
-                    craving_data, glucose_level, glucose_history, pregnancy_week
-                )
 
-            self.pending_extractions[user_id] = {
-                "craving_data": craving_data,
-                "glucose_level": glucose_level,
-                "pregnancy_week": pregnancy_week,
-                "missing": "meal_type",
-                "created_at": datetime.now(),
-            }
-            return {
-                "complete": False,
-                "follow_up_question": "Is this for a snack, breakfast, lunch, or dinner?",
-                "missing_field": "meal_type",
-                "partial_data": craving_data,
-            }
-
-        if missing_field == "food":
+        elif missing_field == "food":
             wanted_foods, excluded_foods = extract_foods_with_negation_spacy(doc, user_message)
             wanted_categories, excluded_categories = extract_categories_with_negation_spacy(
                 doc, user_message, wanted_foods, excluded_foods
@@ -217,53 +241,12 @@ class AIEngine:
 
             existing_excluded_foods = craving_data.get("excluded_foods", [])
             existing_excluded_categories = craving_data.get("excluded_categories", [])
-            all_excluded_foods = list(set(existing_excluded_foods + excluded_foods))
-            all_excluded_categories = list(set(existing_excluded_categories + excluded_categories))
 
-            if wanted_foods or wanted_categories:
-                craving_data["foods"] = wanted_foods
-                craving_data["categories"] = wanted_categories
-                craving_data["excluded_foods"] = all_excluded_foods
-                craving_data["excluded_categories"] = all_excluded_categories
-                craving_data["meal_type"] = extract_meal_type_spacy(doc, wanted_foods)
-
-                if not craving_data["meal_type"] and not wanted_foods:
-                    self.pending_extractions[user_id] = {
-                        "craving_data": craving_data,
-                        "glucose_level": glucose_level,
-                        "pregnancy_week": pregnancy_week,
-                        "missing": "meal_type",
-                        "created_at": datetime.now(),
-                    }
-                    return {
-                        "complete": False,
-                        "follow_up_question": "Is this for a snack or a meal?",
-                        "missing_field": "meal_type",
-                        "partial_data": craving_data,
-                    }
-
-                return self._build_complete_response(
-                    craving_data, glucose_level, glucose_history, pregnancy_week
-                )
-
-            craving_data["excluded_foods"] = all_excluded_foods
-            craving_data["excluded_categories"] = all_excluded_categories
-
-            if excluded_foods:
-                return {
-                    "complete": False,
-                    "follow_up_question": f"Okay, no {', '.join(excluded_foods)}. What would you like instead?",
-                    "missing_field": "food",
-                    "partial_data": craving_data,
-                }
-            return {
-                "complete": False,
-                "follow_up_question": (
-                    "I didn't catch that. What food are you craving? (e.g., chocolate, pizza, chips)"
-                ),
-                "missing_field": "food",
-                "partial_data": craving_data,
-            }
+            craving_data["foods"] = wanted_foods or craving_data.get("foods", [])
+            craving_data["categories"] = wanted_categories or craving_data.get("categories", [])
+            craving_data["excluded_foods"] = list(set(existing_excluded_foods + excluded_foods))
+            craving_data["excluded_categories"] = list(set(existing_excluded_categories + excluded_categories))
+            craving_data["meal_type"] = extract_meal_type_spacy(doc, wanted_foods) or craving_data.get("meal_type")
 
         return self._build_complete_response(craving_data, glucose_level, glucose_history, pregnancy_week)
 
@@ -279,7 +262,7 @@ class AIEngine:
         pregnancy_week: int,
     ) -> Dict[str, Any]:
         """Build the final payload for the recommendation model."""
-        print("entered _build_complete_response")
+        logger.debug("entered _build_complete_response")
         meal_type = (craving_data.get("meal_type") or "snack").lower().strip()
         mapped_time = time_of_day_from_meal_type(meal_type)
         time_of_day = mapped_time if mapped_time else get_time_of_day_from_time()
@@ -300,26 +283,16 @@ class AIEngine:
             "glucose_trend": trend,
             "pregnancy_week": pregnancy_week,
         }
-        print("json_for_model: ", json_for_model)
+        logger.info("json_for_model: %s", json_for_model)
 
         model_response = predict(json_for_model)
-        print(model_response)
+        logger.info("model_response: %s", model_response)
         return {"complete": True, "data": model_response}
 
     def clear_pending(self, user_id: str = "default"):
         """Clear pending follow-up state for a user."""
         if user_id in self.pending_extractions:
             del self.pending_extractions[user_id]
-
-    def translate_response(self, model_response: Dict[str, Any], original_message: str = "") -> str:
-        """Convert the model JSON response into a short user-facing sentence."""
-        recommendation = model_response.get("recommendation", "a healthier alternative")
-        explanation = model_response.get("explanation", "")
-
-        response = f"Based on your levels, here's a great choice: {recommendation}"
-        if explanation:
-            response += f" — {explanation}"
-        return response + " 💜"
 
 
 # =============================================================================
