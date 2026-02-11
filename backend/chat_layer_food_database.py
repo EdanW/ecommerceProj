@@ -583,6 +583,31 @@ FOOD_DATABASE = {
     "flatbread": {"id": 431, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 70, "carbs": 30, "sugar": 1},
     "bruschetta": {"id": 432, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 20, "sugar": 2},
     "crostini": {"id": 433, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 15, "sugar": 1},
+
+    # ==================== ISRAELI FOODS ====================
+    "bamba": {"id": 529, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 18, "sugar": 2},
+    "bisli": {"id": 530, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 20, "sugar": 1},
+    "krembo": {"id": 531, "categories": ["sweet", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 20, "sugar": 15},
+    "halva": {"id": 532, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 35, "carbs": 38, "sugar": 26},
+    "halvah": {"id": 533, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 35, "carbs": 38, "sugar": 26},
+    "burekas": {"id": 534, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 28, "sugar": 2},
+    "boreka": {"id": 535, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 28, "sugar": 2},
+    "rugelach": {"id": 536, "categories": ["sweet", "crunchy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 30, "sugar": 18},
+    "sufganiyah": {"id": 537, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 76, "carbs": 40, "sugar": 20},
+    "sufganiyot": {"id": 538, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 76, "carbs": 40, "sugar": 20},
+    "falafel": {"id": 539, "categories": ["savory", "crunchy", "hot"], "meal_type": "lunch", "glycemic_index": 40, "carbs": 22, "sugar": 2},
+    "shakshuka": {"id": 540, "categories": ["savory", "hot", "spicy"], "meal_type": "breakfast", "glycemic_index": 25, "carbs": 10, "sugar": 5},
+    "sabich": {"id": 541, "categories": ["savory", "hot"], "meal_type": "lunch", "glycemic_index": 45, "carbs": 35, "sugar": 4},
+    "schnitzel": {"id": 542, "categories": ["savory", "crunchy", "hot"], "meal_type": "dinner", "glycemic_index": 45, "carbs": 15, "sugar": 1},
+    "pita": {"id": 543, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 68, "carbs": 33, "sugar": 1},
+    "tahini": {"id": 544, "categories": ["savory", "creamy"], "meal_type": "snack", "glycemic_index": 10, "carbs": 6, "sugar": 0},
+    "ptitim": {"id": 545, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 60, "carbs": 35, "sugar": 1},
+    "israeli couscous": {"id": 546, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 60, "carbs": 35, "sugar": 1},
+    "jachnun": {"id": 547, "categories": ["savory", "hot"], "meal_type": "breakfast", "glycemic_index": 65, "carbs": 40, "sugar": 3},
+    "malabi": {"id": 548, "categories": ["sweet", "creamy", "cold"], "meal_type": "dessert", "glycemic_index": 55, "carbs": 25, "sugar": 20},
+    "labneh": {"id": 549, "categories": ["savory", "creamy"], "meal_type": "breakfast", "glycemic_index": 10, "carbs": 4, "sugar": 3},
+    "shawarma": {"id": 550, "categories": ["savory", "hot", "spicy"], "meal_type": "lunch", "glycemic_index": 40, "carbs": 20, "sugar": 2},
+    "kinder bueno": {"id": 551, "categories": ["sweet", "crunchy", "creamy"], "meal_type": "snack", "glycemic_index": 48, "carbs": 26, "sugar": 20},
 }
 
 
