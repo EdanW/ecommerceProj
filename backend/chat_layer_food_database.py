@@ -5,8 +5,6 @@ Food Database for Gestational Diabetes Craving Assistant
 This file contains the food recognition database.
 Each food maps to its taste categories and typical meal type.
 
-To add new foods, just add them to FOOD_DATABASE below!
-
 Categories: sweet, salty, sour, crunchy, creamy, cold, hot, savory, spicy
 Meal types: snack, breakfast, lunch, dinner, dessert
 """
@@ -79,6 +77,26 @@ FOOD_DATABASE = {
     "popsicle": {"id": 57, "categories": ["sweet", "cold"], "meal_type": "snack", "glycemic_index": 65, "carbs": 15, "sugar": 15},
     "ice pop": {"id": 58, "categories": ["sweet", "cold"], "meal_type": "snack", "glycemic_index": 65, "carbs": 15, "sugar": 15},
     "milkshake": {"id": 59, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 60, "sugar": 50},
+    "chocolate milkshake": {"id": 434, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 63, "carbs": 65, "sugar": 55},
+    "strawberry milkshake": {"id": 435, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 62, "sugar": 52},
+    "vanilla milkshake": {"id": 436, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 60, "sugar": 50},
+    "banana milkshake": {"id": 437, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 65, "sugar": 48},
+    "oreo milkshake": {"id": 438, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 65, "carbs": 70, "sugar": 58},
+    "peanut butter milkshake": {"id": 439, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 55, "sugar": 45},
+    "caramel milkshake": {"id": 440, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 65, "carbs": 68, "sugar": 60},
+    "cookies and cream milkshake": {"id": 441, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 64, "carbs": 68, "sugar": 55},
+    "mint milkshake": {"id": 442, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 60, "sugar": 50},
+    "mint chocolate milkshake": {"id": 443, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 63, "carbs": 65, "sugar": 54},
+    "mango milkshake": {"id": 444, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 58, "carbs": 58, "sugar": 48},
+    "blueberry milkshake": {"id": 445, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 58, "carbs": 55, "sugar": 45},
+    "coffee milkshake": {"id": 446, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 58, "carbs": 55, "sugar": 48},
+    "mocha milkshake": {"id": 447, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 60, "sugar": 52},
+    "malted milkshake": {"id": 448, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 65, "sugar": 50},
+    "cherry milkshake": {"id": 449, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 58, "sugar": 48},
+    "raspberry milkshake": {"id": 450, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 58, "carbs": 55, "sugar": 45},
+    "nutella milkshake": {"id": 451, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 65, "carbs": 70, "sugar": 60},
+    "butterscotch milkshake": {"id": 452, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 64, "carbs": 65, "sugar": 55},
+    "black and white milkshake": {"id": 453, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 63, "sugar": 52},
     "smoothie": {"id": 60, "categories": ["sweet", "cold", "creamy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 45, "sugar": 35},
     "slushie": {"id": 61, "categories": ["sweet", "cold"], "meal_type": "snack", "glycemic_index": 65, "carbs": 40, "sugar": 40},
     
@@ -419,6 +437,83 @@ FOOD_DATABASE = {
     "chocolate milk": {"id": 368, "categories": ["sweet", "creamy"], "meal_type": "snack", "glycemic_index": 45, "carbs": 26, "sugar": 24},
     "butter": {"id": 369, "categories": ["creamy"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
     "ice cream sandwich": {"id": 370, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 65, "carbs": 35, "sugar": 20},
+    "vanilla ice cream": {"id": 454, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "chocolate ice cream": {"id": 455, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 30, "sugar": 26},
+    "strawberry ice cream": {"id": 456, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 25},
+    "banana ice cream": {"id": 457, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 55, "carbs": 30, "sugar": 26},
+    "mint ice cream": {"id": 458, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "mint chocolate chip ice cream": {"id": 459, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 32, "sugar": 27},
+    "cookie dough ice cream": {"id": 460, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 35, "sugar": 28},
+    "cookies and cream ice cream": {"id": 461, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 56, "carbs": 33, "sugar": 26},
+    "oreo ice cream": {"id": 462, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 56, "carbs": 33, "sugar": 26},
+    "coffee ice cream": {"id": 463, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "mocha ice cream": {"id": 464, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "caramel ice cream": {"id": 465, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 34, "sugar": 30},
+    "salted caramel ice cream": {"id": 466, "categories": ["sweet", "cold", "creamy", "salty"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 34, "sugar": 30},
+    "butter pecan ice cream": {"id": 467, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "pistachio ice cream": {"id": 468, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 48, "carbs": 24, "sugar": 20},
+    "rocky road ice cream": {"id": 469, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 56, "carbs": 32, "sugar": 26},
+    "neapolitan ice cream": {"id": 470, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "peanut butter ice cream": {"id": 471, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 48, "carbs": 26, "sugar": 20},
+    "cheesecake ice cream": {"id": 472, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 30, "sugar": 25},
+    "dulce de leche ice cream": {"id": 473, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 60, "carbs": 36, "sugar": 32},
+    "matcha ice cream": {"id": 474, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "green tea ice cream": {"id": 475, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "mango ice cream": {"id": 476, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 55, "carbs": 30, "sugar": 26},
+    "coconut ice cream": {"id": 477, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 48, "carbs": 24, "sugar": 20},
+    "rum raisin ice cream": {"id": 478, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 56, "carbs": 32, "sugar": 28},
+    "cherry ice cream": {"id": 479, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "black cherry ice cream": {"id": 480, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "raspberry ice cream": {"id": 481, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "blueberry ice cream": {"id": 482, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "peach ice cream": {"id": 483, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "lemon ice cream": {"id": 484, "categories": ["sweet", "cold", "creamy", "sour"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "birthday cake ice cream": {"id": 485, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 60, "carbs": 36, "sugar": 30},
+    "brownie ice cream": {"id": 486, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 34, "sugar": 28},
+    "fudge ice cream": {"id": 487, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 56, "carbs": 32, "sugar": 28},
+    "hot fudge sundae": {"id": 488, "categories": ["sweet", "cold", "creamy", "hot"], "meal_type": "dessert", "glycemic_index": 62, "carbs": 45, "sugar": 38},
+    "banana split": {"id": 489, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 60, "carbs": 50, "sugar": 42},
+    "sundae": {"id": 490, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 40, "sugar": 35},
+    "ice cream sundae": {"id": 491, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 40, "sugar": 35},
+    "affogato": {"id": 492, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 48, "carbs": 22, "sugar": 18},
+    "spumoni": {"id": 493, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "stracciatella ice cream": {"id": 494, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 30, "sugar": 26},
+    "hazelnut ice cream": {"id": 495, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 48, "carbs": 24, "sugar": 20},
+    "nutella ice cream": {"id": 496, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 34, "sugar": 30},
+    "tiramisu ice cream": {"id": 497, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 30, "sugar": 25},
+    "lavender ice cream": {"id": 498, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "honey ice cream": {"id": 499, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 55, "carbs": 30, "sugar": 28},
+    "cinnamon ice cream": {"id": 500, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 50, "carbs": 26, "sugar": 22},
+    "pumpkin ice cream": {"id": 501, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 52, "carbs": 28, "sugar": 24},
+    "eggnog ice cream": {"id": 502, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 54, "carbs": 30, "sugar": 26},
+    "cotton candy ice cream": {"id": 503, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 65, "carbs": 38, "sugar": 34},
+    "bubblegum ice cream": {"id": 504, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 62, "carbs": 35, "sugar": 30},
+    "rainbow ice cream": {"id": 505, "categories": ["sweet", "cold", "creamy"], "meal_type": "dessert", "glycemic_index": 58, "carbs": 32, "sugar": 28},
+
+    # ==================== SORBETS ====================
+    "lemon sorbet": {"id": 506, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 78, "carbs": 34, "sugar": 32},
+    "lime sorbet": {"id": 507, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 78, "carbs": 34, "sugar": 32},
+    "orange sorbet": {"id": 508, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "mango sorbet": {"id": 509, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 78, "carbs": 35, "sugar": 33},
+    "raspberry sorbet": {"id": 510, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 75, "carbs": 30, "sugar": 28},
+    "strawberry sorbet": {"id": 511, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "blueberry sorbet": {"id": 512, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 75, "carbs": 30, "sugar": 28},
+    "blackberry sorbet": {"id": 513, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 74, "carbs": 29, "sugar": 27},
+    "passion fruit sorbet": {"id": 514, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "peach sorbet": {"id": 515, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "pineapple sorbet": {"id": 516, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 78, "carbs": 34, "sugar": 32},
+    "coconut sorbet": {"id": 517, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 72, "carbs": 28, "sugar": 26},
+    "watermelon sorbet": {"id": 518, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 80, "carbs": 36, "sugar": 34},
+    "grapefruit sorbet": {"id": 519, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 74, "carbs": 30, "sugar": 28},
+    "cherry sorbet": {"id": 520, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "pomegranate sorbet": {"id": 521, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "apple sorbet": {"id": 522, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 75, "carbs": 30, "sugar": 28},
+    "pear sorbet": {"id": 523, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 74, "carbs": 30, "sugar": 28},
+    "kiwi sorbet": {"id": 524, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "blood orange sorbet": {"id": 525, "categories": ["sweet", "cold", "sour"], "meal_type": "dessert", "glycemic_index": 76, "carbs": 32, "sugar": 30},
+    "mixed berry sorbet": {"id": 526, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 75, "carbs": 30, "sugar": 28},
+    "tropical sorbet": {"id": 527, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 78, "carbs": 34, "sugar": 32},
+    "chocolate sorbet": {"id": 528, "categories": ["sweet", "cold"], "meal_type": "dessert", "glycemic_index": 70, "carbs": 32, "sugar": 28},
 
     # ==================== DRINKS ====================
     "coffee": {"id": 371, "categories": ["hot"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
@@ -488,6 +583,31 @@ FOOD_DATABASE = {
     "flatbread": {"id": 431, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 70, "carbs": 30, "sugar": 1},
     "bruschetta": {"id": 432, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 20, "sugar": 2},
     "crostini": {"id": 433, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 15, "sugar": 1},
+
+    # ==================== ISRAELI FOODS ====================
+    "bamba": {"id": 529, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 18, "sugar": 2},
+    "bisli": {"id": 530, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 20, "sugar": 1},
+    "krembo": {"id": 531, "categories": ["sweet", "creamy"], "meal_type": "snack", "glycemic_index": 62, "carbs": 20, "sugar": 15},
+    "halva": {"id": 532, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 35, "carbs": 38, "sugar": 26},
+    "halvah": {"id": 533, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 35, "carbs": 38, "sugar": 26},
+    "burekas": {"id": 534, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 28, "sugar": 2},
+    "boreka": {"id": 535, "categories": ["savory", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 28, "sugar": 2},
+    "rugelach": {"id": 536, "categories": ["sweet", "crunchy"], "meal_type": "snack", "glycemic_index": 55, "carbs": 30, "sugar": 18},
+    "sufganiyah": {"id": 537, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 76, "carbs": 40, "sugar": 20},
+    "sufganiyot": {"id": 538, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 76, "carbs": 40, "sugar": 20},
+    "falafel": {"id": 539, "categories": ["savory", "crunchy", "hot"], "meal_type": "lunch", "glycemic_index": 40, "carbs": 22, "sugar": 2},
+    "shakshuka": {"id": 540, "categories": ["savory", "hot", "spicy"], "meal_type": "breakfast", "glycemic_index": 25, "carbs": 10, "sugar": 5},
+    "sabich": {"id": 541, "categories": ["savory", "hot"], "meal_type": "lunch", "glycemic_index": 45, "carbs": 35, "sugar": 4},
+    "schnitzel": {"id": 542, "categories": ["savory", "crunchy", "hot"], "meal_type": "dinner", "glycemic_index": 45, "carbs": 15, "sugar": 1},
+    "pita": {"id": 543, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 68, "carbs": 33, "sugar": 1},
+    "tahini": {"id": 544, "categories": ["savory", "creamy"], "meal_type": "snack", "glycemic_index": 10, "carbs": 6, "sugar": 0},
+    "ptitim": {"id": 545, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 60, "carbs": 35, "sugar": 1},
+    "israeli couscous": {"id": 546, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 60, "carbs": 35, "sugar": 1},
+    "jachnun": {"id": 547, "categories": ["savory", "hot"], "meal_type": "breakfast", "glycemic_index": 65, "carbs": 40, "sugar": 3},
+    "malabi": {"id": 548, "categories": ["sweet", "creamy", "cold"], "meal_type": "dessert", "glycemic_index": 55, "carbs": 25, "sugar": 20},
+    "labneh": {"id": 549, "categories": ["savory", "creamy"], "meal_type": "breakfast", "glycemic_index": 10, "carbs": 4, "sugar": 3},
+    "shawarma": {"id": 550, "categories": ["savory", "hot", "spicy"], "meal_type": "lunch", "glycemic_index": 40, "carbs": 20, "sugar": 2},
+    "kinder bueno": {"id": 551, "categories": ["sweet", "crunchy", "creamy"], "meal_type": "snack", "glycemic_index": 48, "carbs": 26, "sugar": 20},
 }
 
 
@@ -505,7 +625,6 @@ CATEGORY_KEYWORDS = {
 }
 
 ## MEAL TYPE KEYWORDS ##
-
 MEAL_TYPE_KEYWORDS = {
     "snack": ["snack", "bite", "nibble", "munch", "quick bite"],
     "breakfast": ["breakfast", "morning", "brunch"],
@@ -515,7 +634,6 @@ MEAL_TYPE_KEYWORDS = {
 }
 
 ## INTENSITY KEYWORDS ##
-
 INTENSITY_KEYWORDS = {
     "high": ["really", "badly", "so much", "dying for", "must have", "desperate", "craving so hard"],
     "low": ["maybe", "kind of", "sort of", "might", "could go for", "wouldn't mind"],

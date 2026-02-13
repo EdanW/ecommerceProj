@@ -32,6 +32,35 @@ def human_list(items: List[str]) -> str:
     return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
+def _filter_overlapping_matches(matches: List[Tuple[int, int, int]]) -> List[Tuple[int, int, int]]:
+    """
+    Remove shorter matches contained within longer ones,
+    e.g. keep "chocolate milkshake" instead of "chocolate" + "milkshake".
+    """
+    if not matches:
+        return []
+    
+    # Sort by start position, then by length (longer first)
+    sorted_matches = sorted(matches, key=lambda x: (x[1], -(x[2] - x[1])))
+    
+    filtered = []
+    for match in sorted_matches:
+        _, start, end = match
+        
+        is_overlapping = False
+        for kept_match in filtered:
+            _, kept_start, kept_end = kept_match
+
+            if start < kept_end and end > kept_start:
+                is_overlapping = True
+                break
+        
+        if not is_overlapping:
+            filtered.append(match)
+    
+    return filtered
+
+
 def extract_foods_with_negation_spacy(
     doc: spacy.tokens.Doc, text: str
 ) -> Tuple[List[str], List[str]]:
@@ -40,13 +69,18 @@ def extract_foods_with_negation_spacy(
 
     Foods are matched via PhraseMatcher against FOOD_DATABASE keys. Exclusion is
     determined by negation scope (dependency-based) and exclusion-phrase spans.
+    
+    Longer matches take priority over shorter overlapping matches
     """
     wanted_foods: List[str] = []
     excluded_foods: List[str] = []
 
     negated_indices = find_negated_tokens(doc)
     exclusion_spans = check_exclusion_phrases(text)
-    matches = food_matcher(doc)
+    
+    # Get all matches and filter to keep only longest non-overlapping ones
+    all_matches = food_matcher(doc)
+    matches = _filter_overlapping_matches(list(all_matches))
 
     for _, start, end in matches:
         span = doc[start:end]

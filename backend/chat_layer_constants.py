@@ -63,3 +63,36 @@ EXCLUSION_PHRASES = [
     "anything but",
     "but not",
 ]
+
+# =============================================================================
+## UNSURE / UNDECIDED SIGNALS ##
+# =============================================================================
+
+UNSURE_PHRASES = [
+    "i don't know",
+    "i dont know",
+    "i do not know",
+    "idk",
+    "not sure",
+    "no idea",
+    "don't know",
+    "dont know",
+    "do not know",
+    "no clue",
+    "anything",
+    "whatever",
+    "surprise me",
+    "you choose",
+    "you decide",
+    "dealer's choice",
+    "dealers choice",
+    "help me decide",
+    "can't decide",
+    "cant decide",
+    "undecided",
+    "no preference",
+    "anything is fine",
+    "whatever is fine",
+    "i'm not sure",
+    "im not sure",
+]
