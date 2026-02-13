@@ -8,12 +8,6 @@ def predict(json_input):
     The main entry point. 
     Input: JSON string or dict
     Output: JSON with recommendation and reason.
-    Output format:
-    {
-        food: string,
-        reason: string,
-        another_option: string,
-    }
     """
     print("entered predict")
     # 1. Load and Transform Data (since its a dict of dicts)
@@ -29,7 +23,7 @@ def predict(json_input):
     #2. discard irrelevant foods
     valid_candidates = filter_by_constraints(food_df, json_input)
     
-    best_matches = get_best_matches(json_input, valid_candidates)
+    best_matches, top_reason = get_best_matches(json_input, valid_candidates)
 
     # Guard
     top_pick = best_matches.iloc[0]['name'] if not best_matches.empty else None
@@ -37,6 +31,6 @@ def predict(json_input):
 
     return {
         "food": top_pick,
-        "reason": 'TODO',
+        "reason": top_reason,
         "another_option": runner_up
     }
