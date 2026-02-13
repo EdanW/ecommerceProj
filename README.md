@@ -71,3 +71,7 @@ npm run dev
 - **Frontend:** React, Vite, Axios, Recharts
 - **Auth:** JWT (python-jose), bcrypt (passlib)
 - **Database:** SQLite
+
+## Data Science and Recommendation System
+
+Attached as a seperate PDF under backend/ds_service for better formatting.
