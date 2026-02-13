@@ -24,7 +24,16 @@ def filter_by_constraints(foods_df, user_input):
         valid_foods = valid_foods[valid_foods['categories'].apply(
             lambda cats: not any(c.lower() in excluded_cats for c in cats)
         )]
-
+    
+    # 4. Whitelist - include only desired categories
+    target_cats = [c.lower() for c in user_input['craving'].get('categories', [])]
+    
+    if target_cats:
+        # Logic: Keep food IF it shares AT LEAST ONE category with the request
+        valid_foods = valid_foods[valid_foods['categories'].apply(
+            lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(target_cats)
+        )]
+    print(f'filtered down to {len(valid_foods)} valid foods')
     return valid_foods
 
 
@@ -43,6 +52,11 @@ def get_best_matches(user_json, candidates_df):
     X = pd.DataFrame(feature_rows)
 
     # B. Model Prediction (The Brain)
+    """Index(['glucose_level', 'glucose_avg', 'glucose_trend', 'pregnancy_week',
+       'intensity', 'time_of_day', 'food_gi', 'food_carbs', 'food_sugar',
+       'matches_request', 'matches_category'],
+      dtype='str')
+    """
     # TODO: Load real model. For now, everyone gets 0.8
     scores = [0.8] * len(X)
     
