@@ -91,10 +91,14 @@ def generate_data():
         if intensity == 2:
             risk_score *= 1.1
 
-        # 4. Labeling
-        # Threshold: Score < 45 is Safe (1), else Unsafe (0)
-        is_safe = 1 if risk_score < 45 else 0
-
+        # 4. Labeling with Noisy Threshold
+        
+        threshold_noise = np.random.normal(0, 3.0) 
+        effective_threshold = 45 + threshold_noise
+        
+        # Now, a score of 46 might still be "Safe" if the noise pushes the threshold to 48.
+        is_safe = 1 if risk_score < effective_threshold else 0
+        
         # --- D. Append Data (Matching 9 Features EXACTLY) ---
         data.append({
             # User

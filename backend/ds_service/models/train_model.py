@@ -2,7 +2,7 @@ import pandas as pd
 import xgboost as xgb
 import joblib
 import os
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.metrics import accuracy_score, classification_report
 
 # --- CONFIG ---
@@ -31,40 +31,53 @@ def train():
     # 3. Split Data (80% Train, 20% Test)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # 4. Initialize & Train XGBoost
-    # n_estimators=100 means it builds 100 little decision trees to vote
+    # 4. Initialize XGBoost
     model = xgb.XGBClassifier(
         n_estimators=100,
         learning_rate=0.1,
         max_depth=5,
-        use_label_encoder=False,
         eval_metric='logloss'
     )
     
-    print("   Training XGBoost Classifier...")
+    # --- 5. Cross-Validation (The Robustness Check) ---
+    print("\n🔄 Running 5-Fold Cross-Validation...")
+    
+    # StratifiedKFold ensures every fold has the same % of safe/unsafe examples
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    
+    # This trains the model 5 times on different subsets of X_train
+    cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='accuracy')
+    
+    print(f"   CV Scores per fold: {cv_scores}")
+    print(f"   ✅ Average CV Accuracy: {cv_scores.mean():.2%} (+/- {cv_scores.std() * 2:.2%})")
+    
+    # Logic check: If accuracy swings wildly (e.g., 80% to 99%), the model is unstable
+    if cv_scores.std() > 0.03:
+        print("   ⚠️ Warning: High variance in model performance. Data might be too noisy.")
+
+    # 6. Final Training
+    # Now that we know the architecture is stable, we train on the FULL X_train
+    print("\n💪 Training final model on full training set...")
     model.fit(X_train, y_train)
 
-    # 5. Evaluate
+    # 7. Evaluate on the Hold-Out Test Set
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     
-    print(f"✅ Training Complete!")
-    print(f"📊 Accuracy on Test Set: {accuracy:.2%}")
+    print(f"📊 Final Test Set Accuracy: {accuracy:.2%}")
     print("\nDetailed Report:")
     print(classification_report(y_test, y_pred))
 
-    # 6. Save the Model
-    # Ensure directory exists
+    # 8. Save the Model
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump(model, MODEL_PATH)
     print(f"💾 Model saved to: {MODEL_PATH}")
     
-    # 7. Sanity Check: What matters most?
+    # 9. Feature Importance
     print("\n🔍 Top 5 Most Important Features:")
-    # Get feature importance
     importance = model.feature_importances_
-    # Map to column names
     feats = pd.DataFrame({'Feature': X.columns, 'Importance': importance})
     print(feats.sort_values(by='Importance', ascending=False).head(5))
+    
 if __name__ == "__main__":
     train()
