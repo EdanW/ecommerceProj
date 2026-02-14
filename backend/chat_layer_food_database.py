@@ -715,6 +715,48 @@ FOOD_DATABASE = {
     "elite chocolate": {"id": 624, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 49, "carbs": 26, "sugar": 24},
     "pesek zman": {"id": 625, "categories": ["sweet", "crunchy"], "meal_type": "snack", "glycemic_index": 50, "carbs": 28, "sugar": 22},
     "kif kef": {"id": 626, "categories": ["sweet", "crunchy"], "meal_type": "snack", "glycemic_index": 52, "carbs": 27, "sugar": 20},
+
+    # ==================== ISRAELI DAIRY & FRIDGE STAPLES ====================
+    "gvinah levana": {"id": 657, "categories": ["creamy"], "meal_type": "breakfast", "glycemic_index": 10, "carbs": 4, "sugar": 3},
+    "bulgarian cheese": {"id": 658, "categories": ["salty", "creamy"], "meal_type": "breakfast", "glycemic_index": 0, "carbs": 1, "sugar": 1},
+    "tzfatit cheese": {"id": 659, "categories": ["salty"], "meal_type": "breakfast", "glycemic_index": 0, "carbs": 1, "sugar": 0},
+    "labneh with zaatar": {"id": 660, "categories": ["sour", "savory", "creamy"], "meal_type": "breakfast", "glycemic_index": 10, "carbs": 5, "sugar": 3},
+    "yellow cheese": {"id": 661, "categories": ["savory"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "greek yogurt 5%": {"id": 662, "categories": ["creamy"], "meal_type": "snack", "glycemic_index": 12, "carbs": 4, "sugar": 4},
+
+    # ==================== PANTRY & GRAINS (HEALTHY SWAPS) ====================
+    "quinoa": {"id": 663, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 53, "carbs": 21, "sugar": 0},
+    "buckwheat": {"id": 664, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 45, "carbs": 20, "sugar": 1},
+    "kasha": {"id": 665, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 45, "carbs": 20, "sugar": 1},
+    "bulgur": {"id": 666, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 48, "carbs": 18, "sugar": 0},
+    "freekeh": {"id": 667, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 43, "carbs": 17, "sugar": 1},
+    "whole wheat pita": {"id": 668, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 45, "carbs": 30, "sugar": 1},
+    "crispbread": {"id": 669, "categories": ["crunchy"], "meal_type": "snack", "glycemic_index": 50, "carbs": 10, "sugar": 1},
+    "prizat": {"id": 670, "categories": ["crunchy"], "meal_type": "snack", "glycemic_index": 50, "carbs": 10, "sugar": 1},
+
+    # ==================== VEGETABLES & FRUITS (EVERYDAY) ====================
+    "cherry tomatoes": {"id": 671, "categories": ["sweet", "crunchy"], "meal_type": "snack", "glycemic_index": 15, "carbs": 4, "sugar": 3},
+    "kohlrabi": {"id": 672, "categories": ["crunchy", "cold"], "meal_type": "snack", "glycemic_index": 15, "carbs": 6, "sugar": 2},
+    "persimmon": {"id": 673, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 50, "carbs": 18, "sugar": 12},
+    "pomelo": {"id": 674, "categories": ["sweet", "sour"], "meal_type": "snack", "glycemic_index": 30, "carbs": 10, "sugar": 8},
+    "medjool dates": {"id": 675, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 62, "carbs": 18, "sugar": 16},
+
+    # ==================== COOKED MEALS & PROTEINS ====================
+    "lentil soup": {"id": 676, "categories": ["savory", "hot"], "meal_type": "lunch", "glycemic_index": 32, "carbs": 20, "sugar": 1},
+    "baked salmon": {"id": 677, "categories": ["savory", "hot"], "meal_type": "dinner", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "hard boiled egg": {"id": 678, "categories": ["savory"], "meal_type": "breakfast", "glycemic_index": 0, "carbs": 1, "sugar": 0},
+    "tuna in water": {"id": 679, "categories": ["savory"], "meal_type": "lunch", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+
+    # ==================== CONDIMENTS & SWEETENERS (ISRAELI) ====================
+    "silan": {"id": 680, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 60, "carbs": 15, "sugar": 14},
+    "date honey": {"id": 681, "categories": ["sweet"], "meal_type": "snack", "glycemic_index": 60, "carbs": 15, "sugar": 14},
+    "raw tahini": {"id": 682, "categories": ["savory", "creamy"], "meal_type": "snack", "glycemic_index": 10, "carbs": 4, "sugar": 0},
+
+    # ==================== DRINKS ====================
+    "soda water": {"id": 683, "categories": ["cold"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "iced americano": {"id": 684, "categories": ["cold"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "almond milk (unsweetened)": {"id": 685, "categories": ["creamy", "cold"], "meal_type": "snack", "glycemic_index": 25, "carbs": 1, "sugar": 0},
+    "oat milk": {"id": 686, "categories": ["creamy", "cold"], "meal_type": "snack", "glycemic_index": 30, "carbs": 16, "sugar": 7},
 }
 
 
