@@ -121,17 +121,17 @@ def _generate_assistant_message(
         if glucose_status == "Elevated":
             message = (
                 f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
-                f"but **{food}** can still work — just keep the portion in check! 🍽️"
+                f"but {food} can still work — just keep the portion in check! 🍽️"
             )
         elif glucose_status == "Low":
             message = (
                 f"Your glucose is on the lower side ({glucose_level} mg/dL), "
-                f"and **{food}** sounds like a great pick right now! 🎉"
+                f"and {food} sounds like a great pick right now! 🎉"
             )
         else:
             message = (
                 f"Your glucose looks good ({glucose_level} mg/dL) — "
-                f"**{food}** sounds like a great choice! 🎉"
+                f"{food} sounds like a great choice! 🎉"
             )
     else:
         # Model suggested something different
@@ -139,21 +139,21 @@ def _generate_assistant_message(
             message = (
                 f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
                 f"so that might not be the best option right now. "
-                f"A better alternative would be **{food}**!"
+                f"A better alternative would be {food}!"
             )
         elif glucose_status == "Low":
             message = (
                 f"Your glucose is on the lower side ({glucose_level} mg/dL). "
-                f"I'd suggest going with **{food}** instead!"
+                f"I'd suggest going with {food} instead!"
             )
         else:
             message = (
                 f"Your glucose looks good ({glucose_level} mg/dL)! "
-                f"I'd recommend **{food}** — it's a great option for you right now."
+                f"I'd recommend {food} — it's a great option for you right now."
             )
 
     if another_option:
-        message += f" Another option: **{another_option}**."
+        message += f"\nAnother option for you: {another_option}."
 
     message += " 💜"
     return message
