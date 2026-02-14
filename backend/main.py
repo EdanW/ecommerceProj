@@ -113,11 +113,22 @@ def _generate_assistant_message(
             "Could you try describing what you're in the mood for differently? 💜"
         )
 
-    # Check if the model's top pick matches what the user asked for
-    craving_approved = food.lower() in requested_foods if requested_foods else False
+    # Determine scenario:
+    # 1) Craving approved — user asked for specific food and model agrees
+    # 2) Craving redirected — user asked for specific food but model suggests something else
+    # 3) Vague recommendation — user described a craving with no specific food
+    food_lower = food.lower()
+    vague_request = len(requested_foods) == 0
+
+    if requested_foods:
+        craving_approved = (
+            food_lower in requested_foods
+            or all(f in food_lower for f in requested_foods)
+        )
+    else:
+        craving_approved = False
 
     if craving_approved:
-        # Model approved the user's craving
         if glucose_status == "Elevated":
             message = (
                 f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
@@ -133,8 +144,23 @@ def _generate_assistant_message(
                 f"Your glucose looks good ({glucose_level} mg/dL) — "
                 f"{food} sounds like a great choice! 🎉"
             )
+    elif vague_request:
+        if glucose_status == "Elevated":
+            message = (
+                f"Your glucose is a bit elevated ({glucose_level} mg/dL). "
+                f"I'd go with {food} — it's a solid pick that works for you right now! 🍽️"
+            )
+        elif glucose_status == "Low":
+            message = (
+                f"Your glucose is on the lower side ({glucose_level} mg/dL). "
+                f"I'd suggest {food} — it should be a great fit! 🎉"
+            )
+        else:
+            message = (
+                f"Your glucose looks good ({glucose_level} mg/dL)! "
+                f"How about {food}? It's a great option for you right now! 🎉"
+            )
     else:
-        # Model suggested something different
         if glucose_status == "Elevated":
             message = (
                 f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
@@ -193,8 +219,8 @@ class FoodLogRequest(BaseModel):
     meal_time: str
     note: Optional[str] = None
 
-# --- Routes ---
 
+# --- Routes ---
 @app.post("/register")
 def register(user_data: RegisterRequest):
     with Session(engine_db) as session:
@@ -353,7 +379,7 @@ def check_craving(request: CravingRequest, current_user: User = Depends(get_curr
         user_id=user_id
     )
 
-    # If incomplete, return follow-up question
+    # If incomplete - return follow-up question
     if not extraction.get("complete"):
         return extraction
 
