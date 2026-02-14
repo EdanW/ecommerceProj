@@ -7,7 +7,6 @@ def encode_intensity(intensity_str):
     1 = Low
     2 = Medium
     3 = High
-    TODO not sure whats the enum...
     """
     if not intensity_str:
         return 0
