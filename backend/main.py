@@ -96,45 +96,61 @@ def get_last_n_glucose_readings(n: int = 10) -> list[dict]:
 
 def _generate_assistant_message(
     model_response: dict,
-    extraction_data: dict,
+    craving_input: dict,
     glucose_level: int,
     glucose_status: str
 ) -> str:
     """Turn model output into a user-facing message."""
     food = model_response.get("food")
-    reason = model_response.get("reason")
     another_option = model_response.get("another_option")
 
-    craving_data = extraction_data.get("craving", {})
-    foods = craving_data.get("foods", [])
-    categories = craving_data.get("categories", [])
-    
-    # Craving description for the message
-    if foods:
-        craving_description = ", ".join(foods)
-    elif categories:
-        craving_description = "something " + " and ".join(categories)
-    else:
-        craving_description = "a snack"
+    requested_foods = [f.lower() for f in craving_input.get("foods", [])]
 
     # No recommendation from model
     if not food:
         return (
-            f"I couldn't find a great match for {craving_description} right now. "
+            "I couldn't find a great match right now. "
             "Could you try describing what you're in the mood for differently? 💜"
         )
 
-    if glucose_status == "Elevated":
-        intro = f"Your glucose is a bit elevated ({glucose_level} mg/dL), so let's be mindful! "
-    elif glucose_status == "Low":
-        intro = f"Your glucose is on the lower side ({glucose_level} mg/dL). "
+    # Check if the model's top pick matches what the user asked for
+    craving_approved = food.lower() in requested_foods if requested_foods else False
+
+    if craving_approved:
+        # Model approved the user's craving
+        if glucose_status == "Elevated":
+            message = (
+                f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
+                f"but **{food}** can still work — just keep the portion in check! 🍽️"
+            )
+        elif glucose_status == "Low":
+            message = (
+                f"Your glucose is on the lower side ({glucose_level} mg/dL), "
+                f"and **{food}** sounds like a great pick right now! 🎉"
+            )
+        else:
+            message = (
+                f"Your glucose looks good ({glucose_level} mg/dL) — "
+                f"**{food}** sounds like a great choice! 🎉"
+            )
     else:
-        intro = f"Your levels look good ({glucose_level} mg/dL)! "
-
-    message = f"{intro}Based on your craving for {craving_description}, I'd suggest **{food}**."
-
-    if reason:
-        message += f" {reason}"
+        # Model suggested something different
+        if glucose_status == "Elevated":
+            message = (
+                f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
+                f"so that might not be the best option right now. "
+                f"A better alternative would be **{food}**!"
+            )
+        elif glucose_status == "Low":
+            message = (
+                f"Your glucose is on the lower side ({glucose_level} mg/dL). "
+                f"I'd suggest going with **{food}** instead!"
+            )
+        else:
+            message = (
+                f"Your glucose looks good ({glucose_level} mg/dL)! "
+                f"I'd recommend **{food}** — it's a great option for you right now."
+            )
 
     if another_option:
         message += f" Another option: **{another_option}**."
@@ -342,11 +358,12 @@ def check_craving(request: CravingRequest, current_user: User = Depends(get_curr
         return extraction
 
     model_response = extraction.get("data", {})
+    craving_input = extraction.get("craving_input", {})
 
     # Generate human-readable message from the model output
     assistant_message = _generate_assistant_message(
         model_response=model_response,
-        extraction_data=model_response,
+        craving_input=craving_input,
         glucose_level=glucose_data["level"],
         glucose_status=glucose_data["status"]
     )

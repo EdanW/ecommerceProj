@@ -22,7 +22,7 @@ from .ds_service.predict.predict import predict
 ## LOCAL IMPORTS ##
 # =============================================================================
 
-from .chat_layer_constants import PENDING_TTL_SECONDS
+from .chat_layer_constants import PENDING_TTL_SECONDS, FOOD_CONTEXT_KEYWORDS
 from .chat_layer_time_utils import (
     get_time_of_day_from_time,
     time_of_day_from_meal_type,
@@ -37,6 +37,7 @@ from .chat_layer_extractors import (
     parse_meal_type_answer,
 )
 from .chat_layer_unsure import is_unsure_response, build_unsure_craving_data
+from .chat_layer_food_database import FOOD_DATABASE
 
 # =============================================================================
 ## LOGGING ##
@@ -63,6 +64,18 @@ class AIEngine:
         """Initialize in-memory follow-up state keyed by user_id."""
         self.pending_extractions: Dict[str, Dict[str, Any]] = {}
         logger.info("AI Engine initialized (SpaCy-based NLP)")
+
+    @staticmethod
+    def _is_food_related(message: str) -> bool:
+        """Check if the message has any food-related context."""
+        message_lower = message.lower()
+        # Check for food-context keywords (hungry, craving, eat, etc.)
+        if any(kw in message_lower.split() for kw in FOOD_CONTEXT_KEYWORDS):
+            return True
+        # Check if any known food name appears in the message
+        if any(food in message_lower for food in FOOD_DATABASE):
+            return True
+        return False
 
     def _cleanup_expired_pending(self):
         """Drop pending follow-up states older than the configured TTL."""
@@ -152,7 +165,19 @@ class AIEngine:
                     "partial_data": craving_data,
                 }
 
-            # 1B) No actionable input
+            # 1B) No actionable input — check if message is food-related at all
+            if not self._is_food_related(user_message):
+                logger.info("Off-topic message detected: %s", user_message)
+                return {
+                    "complete": False,
+                    "off_topic": True,
+                    "follow_up_question": (
+                        "I'm sorry, but I can only help with food and meal recommendations. "
+                        "Tell me what you're craving and I'll find something great for you! 🍽️"
+                    ),
+                }
+
+            # 1C) Food-related but vague — ask for clarification
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
                 "glucose_level": glucose_level,
@@ -287,7 +312,14 @@ class AIEngine:
 
         model_response = predict(json_for_model)
         logger.info("model_response: %s", model_response)
-        return {"complete": True, "data": model_response}
+        return {
+            "complete": True,
+            "data": model_response,
+            "craving_input": {
+                "foods": craving_data.get("foods", []),
+                "categories": craving_data.get("categories", []),
+            },
+        }
 
     def clear_pending(self, user_id: str = "default"):
         """Clear pending follow-up state for a user."""

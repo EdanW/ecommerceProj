@@ -68,6 +68,70 @@ EXCLUSION_PHRASES = [
 ## UNSURE / UNDECIDED SIGNALS ##
 # =============================================================================
 
+# =============================================================================
+## FOOD-RELATED CONTEXT SIGNALS ##
+# =============================================================================
+
+FOOD_CONTEXT_KEYWORDS = {
+    "food",
+    "eat",
+    "eating",
+    "hungry",
+    "starving",
+    "craving",
+    "crave",
+    "appetite",
+    "meal",
+    "cook",
+    "cooking",
+    "recipe",
+    "taste",
+    "delicious",
+    "yummy",
+    "snack",
+    "breakfast",
+    "lunch",
+    "dinner",
+    "brunch",
+    "supper",
+    "dessert",
+    "drink",
+    "thirsty",
+    "calories",
+    "nutrition",
+    "diet",
+    "sugar",
+    "carbs",
+    "protein",
+    "fiber",
+    "bake",
+    "baking",
+    "fry",
+    "grill",
+    "roast",
+    "order",
+    "takeout",
+    "delivery",
+    "restaurant",
+    "bite",
+    "nibble",
+    "munch",
+    "treat",
+    "flavor",
+    "flavour",
+    "savory",
+    "sweet",
+    "salty",
+    "sour",
+    "spicy",
+    "crunchy",
+    "creamy",
+}
+
+# =============================================================================
+## UNSURE / UNDECIDED SIGNALS ##
+# =============================================================================
+
 UNSURE_PHRASES = [
     "i don't know",
     "i dont know",
