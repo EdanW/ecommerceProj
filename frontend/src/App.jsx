@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Auth } from './components/Auth';
 import { Profile } from './components/Profile';
 import { Header } from './components/Header';
-import { GlucoseChart, FoodLog } from './components/Placeholders';
+import { GlucoseChart, FoodLog } from './components/HealthWidgets';
 import {
     Activity, Utensils, Home, User, LineChart,
     ScrollText, ThumbsUp, ThumbsDown

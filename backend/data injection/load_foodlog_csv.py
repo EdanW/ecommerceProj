@@ -1,5 +1,11 @@
 import csv
+import sys
 from datetime import datetime
+from pathlib import Path
+
+# Add backend/ to sys.path so we can import models
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from sqlmodel import Session, create_engine, select
 from sqlalchemy import delete
 
