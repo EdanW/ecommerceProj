@@ -3,6 +3,7 @@ SpaCy NLP initialization and matchers for the chat layer.
 """
 
 import logging
+import sys
 import spacy
 from spacy.matcher import PhraseMatcher
 
@@ -26,7 +27,7 @@ except OSError:
     logger.warning("SpaCy model not found. Downloading: en_core_web_sm")
     import subprocess
 
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
     nlp = spacy.load("en_core_web_sm")
     logger.info("SpaCy model downloaded and loaded: en_core_web_sm")
 
