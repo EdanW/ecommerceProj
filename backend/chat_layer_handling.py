@@ -106,13 +106,13 @@ class AIEngine:
         """
         self._cleanup_expired_pending()
 
-        # Pending follow-up takes priority
+        # Check if this is a follow-up to a previous extraction
         if user_id in self.pending_extractions:
             return self._handle_follow_up(
                 user_message, glucose_level, glucose_history, pregnancy_week, user_id
             )
 
-        # Unsure / undecided
+        # Unsure response 
         if is_unsure_response(user_message):
             craving_data = build_unsure_craving_data()
             return self._build_complete_response(
@@ -165,7 +165,7 @@ class AIEngine:
                     "partial_data": craving_data,
                 }
 
-            # 1B) No actionable input — check if message is food-related at all
+            # 1B) No actionable input - check if message is food-related at all
             if not self._is_food_related(user_message):
                 logger.info("Off-topic message detected: %s", user_message)
                 return {
@@ -177,7 +177,7 @@ class AIEngine:
                     ),
                 }
 
-            # 1C) Food-related but vague — ask for clarification
+            # 1C) Food-related but vague - ask for clarification
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
                 "glucose_level": glucose_level,
