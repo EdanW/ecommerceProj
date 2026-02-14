@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, create_engine, select, delete
 from sqlalchemy import desc
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from .models import User, GlucoseLog, GlucoseReading, DailyHabit, CravingFeedback, FoodLog
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from .simulator import get_current_glucose_level
-from .ai_engine import engine as ai_engine
+from .chat_layer_handling import engine as chat_layer_engine
 
 # Database Setup
 sqlite_file_name = "backend/database.db"
@@ -73,6 +73,75 @@ def calculate_pregnancy_data(start_date_str):
         return {"week": weeks, "trimester": trimester, "size": size}
     except:
         return None
+    
+## Calculates the last N glucose readings for a user
+def get_last_n_glucose_readings(n: int = 10) -> list[dict]:
+    """Fetch the last N glucose readings from the database."""
+    with Session(engine_db) as session:
+        statement = (
+            select(GlucoseReading)
+            .order_by(desc(GlucoseReading.timestamp_utc))
+            .limit(n)
+        )
+        readings = session.exec(statement).all()
+
+    return [
+        {
+            "timestamp_utc": r.timestamp_utc.isoformat(),
+            "glucose_mg_dl": r.glucose_mg_dl,
+            "tag": r.tag,
+        }
+        for r in readings
+    ]
+
+def _generate_assistant_message(
+    model_response: dict,
+    extraction_data: dict,
+    glucose_level: int,
+    glucose_status: str
+) -> str:
+    """Turn model output into a user-facing message."""
+    food = model_response.get("food")
+    reason = model_response.get("reason")
+    another_option = model_response.get("another_option")
+
+    craving_data = extraction_data.get("craving", {})
+    foods = craving_data.get("foods", [])
+    categories = craving_data.get("categories", [])
+    
+    # Craving description for the message
+    if foods:
+        craving_description = ", ".join(foods)
+    elif categories:
+        craving_description = "something " + " and ".join(categories)
+    else:
+        craving_description = "a snack"
+
+    # No recommendation from model
+    if not food:
+        return (
+            f"I couldn't find a great match for {craving_description} right now. "
+            "Could you try describing what you're in the mood for differently? 💜"
+        )
+
+    if glucose_status == "Elevated":
+        intro = f"Your glucose is a bit elevated ({glucose_level} mg/dL), so let's be mindful! "
+    elif glucose_status == "Low":
+        intro = f"Your glucose is on the lower side ({glucose_level} mg/dL). "
+    else:
+        intro = f"Your levels look good ({glucose_level} mg/dL)! "
+
+    message = f"{intro}Based on your craving for {craving_description}, I'd suggest **{food}**."
+
+    if reason:
+        message += f" {reason}"
+
+    if another_option:
+        message += f" Another option: **{another_option}**."
+
+    message += " 💜"
+    return message
+
 
 
 # --- Models ---
@@ -250,13 +319,51 @@ def log_feedback(data: FeedbackRequest, current_user: User = Depends(get_current
 @app.post("/analyze_craving")
 def check_craving(request: CravingRequest, current_user: User = Depends(get_current_user)):
     glucose_data = get_current_glucose_level()
+    glucose_history = get_last_n_glucose_readings(n=10)
+
     # Calculate current week or default to 28 if unknown
     week = 28
     preg_data = calculate_pregnancy_data(current_user.pregnancy_start_date)
     if preg_data:
-        week = preg_data['week']
+        week = preg_data["week"]
 
-    return ai_engine.analyze_craving(request.food_name, glucose_data['level'], week)
+    user_id = str(current_user.id)
+
+    extraction = chat_layer_engine.extract_to_json(
+        user_message=request.food_name,
+        glucose_level=glucose_data["level"],
+        glucose_history=glucose_history,
+        pregnancy_week=week,
+        user_id=user_id
+    )
+
+    # If incomplete, return follow-up question
+    if not extraction.get("complete"):
+        return extraction
+
+    model_response = extraction.get("data", {})
+
+    # Generate human-readable message from the model output
+    assistant_message = _generate_assistant_message(
+        model_response=model_response,
+        extraction_data=model_response,
+        glucose_level=glucose_data["level"],
+        glucose_status=glucose_data["status"]
+    )
+
+    return {
+        **extraction,
+        "model_response": model_response,
+        "assistant_message": assistant_message
+    }
+
+
+
+@app.post("/clear_chat")
+def clear_chat(current_user: User = Depends(get_current_user)):
+    user_id = str(current_user.id)
+    chat_layer_engine.clear_pending(str(current_user.id))
+    return {"message": "Chat cleared"}
 
 
 @app.get("/food_logs/today")

@@ -1,9 +1,17 @@
 fastapi
-uvicorn
+uvicorn[standard]
+tzdata
 sqlmodel
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
 openai
 google-generativeai
-uvicorn[standard]
+spacy
+
+# Data Science & ML
+numpy
+pandas
+scikit-learn
+xgboost
+joblib

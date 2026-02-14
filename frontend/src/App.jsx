@@ -144,6 +144,10 @@ function CravingTool({ setView, token }) {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setResult(res.data);
+            if (!res.data.complete) {
+                // For follow-up questions, keep input focused but clear it
+                setInput('');
+            }
         } catch (e) {
             console.error(e);
             alert("AI service unavailable.");
@@ -155,7 +159,7 @@ function CravingTool({ setView, token }) {
         try {
             await axios.post(`${API_URL}/feedback`, {
                 craving: input,
-                suggestion: result.alternative,
+                suggestion: result.model_response?.recommendation || result.assistant_message,
                 is_liked: isLiked
             }, { headers: { Authorization: `Bearer ${token}` } });
             setFeedbackGiven(true);
@@ -179,20 +183,36 @@ function CravingTool({ setView, token }) {
                 </button>
             </div>
 
-            {result && (
+            {result && !result.complete && (
                 <div className="ai-feedback-box fade-in">
-                  <div className={`status-badge ${result.safety === 'High Safety' ? 'green' : 'orange'}`} style={{display:'inline-block', marginBottom:'10px'}}>
-                    {result.safety}
-                  </div>
+                  <p style={{fontSize:'18px', fontWeight:'500', color:'#F48FB1', marginTop:'5px'}}>
+                    {result.follow_up_question}
+                  </p>
+                </div>
+            )}
 
+            {result && result.complete && (
+                <div className="ai-feedback-box fade-in">
                   <p style={{fontSize:'18px', fontWeight:'500', color:'#333', marginTop:'5px'}}>
-                    "{result.message}"
+                    {result.assistant_message}
                   </p>
 
-                  <div className="suggestion-box">
-                    <h4 style={{margin:'0 0 5px 0', color:'#6FCF97', fontSize:'14px'}}>💡 Better Option:</h4>
-                    <p style={{margin:0, fontSize:'15px', color:'#555'}}>{result.alternative}</p>
-                  </div>
+                  {result.model_response?.alternatives && result.model_response.alternatives.length > 0 && (
+                    <div className="suggestion-box">
+                      <h4 style={{margin:'10px 0 5px 0', color:'#6FCF97', fontSize:'14px'}}>💡 More Options:</h4>
+                      <ul style={{margin:'5px 0', paddingLeft:'20px', fontSize:'14px', color:'#555'}}>
+                        {result.model_response.alternatives.map((alt, idx) => (
+                          <li key={idx} style={{marginBottom:'5px'}}>{alt}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.model_response?.warnings && result.model_response.warnings.length > 0 && (
+                    <div style={{marginTop:'10px', padding:'10px', backgroundColor:'#FFF3E0', borderRadius:'8px'}}>
+                      <p style={{margin:0, fontSize:'13px', color:'#E65100'}}>⚠️ {result.model_response.warnings.join(' ')}</p>
+                    </div>
+                  )}
 
                   <div className="flex-between" style={{marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px'}}>
                     <span className="tiny-text">Was this helpful?</span>
