@@ -1,7 +1,12 @@
+"""
+Wipes all rows from the glucose readings table.
+Run this standalone to reset glucose data before a fresh CSV import.
+"""
+
 import sys
 from pathlib import Path
 
-# Add backend/ to sys.path so we can import models
+# Allow imports from the backend package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlmodel import Session, create_engine
@@ -11,12 +16,9 @@ DB_PATH = "backend/database.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 
 def main():
+    # Open a session, delete every glucose row, and commit
     with Session(engine) as session:
-        # If your table name is different, change it here:
         session.exec(text("DELETE FROM glucosereading;"))
-        # If you used snake_case table name, try:
-        # session.exec(text("DELETE FROM glucose_reading;"))
-
         session.commit()
         print("✅ Deleted all rows from glucose table.")
 

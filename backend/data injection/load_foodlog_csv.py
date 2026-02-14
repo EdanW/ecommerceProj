@@ -1,9 +1,14 @@
+"""
+Imports food log entries from a CSV into the database.
+Flow: ensure placeholder user exists -> delete their old logs -> parse CSV -> bulk insert -> commit.
+"""
+
 import csv
 import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add backend/ to sys.path so we can import models
+# Allow imports from the backend package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlmodel import Session, create_engine, select
@@ -18,11 +23,13 @@ USERNAME = "placeholder"
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 
 def parse_meal_time(value: str) -> str:
+    """Validate HH:MM format and return the cleaned string."""
     value = value.strip()
     datetime.strptime(value, "%H:%M")
     return value
 
 def parse_created_date(value: str) -> str:
+    """Validate YYYY-MM-DD format; defaults to today if empty."""
     value = value.strip()
     if not value:
         return datetime.now().date().isoformat()
@@ -30,6 +37,7 @@ def parse_created_date(value: str) -> str:
     return value
 
 def ensure_placeholder_user(session: Session) -> User:
+    """Return existing placeholder user or create one if missing."""
     user = session.exec(select(User).where(User.username == USERNAME)).first()
     if user:
         return user
@@ -50,11 +58,14 @@ def ensure_placeholder_user(session: Session) -> User:
 
 def main():
     with Session(engine) as session:
+        # 1. Make sure the target user exists
         user = ensure_placeholder_user(session)
 
+        # 2. Wipe old food logs for this user so we start fresh
         session.exec(delete(FoodLog).where(FoodLog.user_id == user.id))
         session.commit()
 
+        # 3. Read CSV rows, validate fields, and insert each as a FoodLog
         rows = 0
         with open(CSV_PATH, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)

@@ -1,7 +1,12 @@
+"""
+Wipes all rows from the food log table.
+Creates a placeholder user first if one doesn't exist (needed for FK integrity).
+"""
+
 import sys
 from pathlib import Path
 
-# Add backend/ to sys.path so we can import models
+# Allow imports from the backend package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlmodel import Session, create_engine, select
@@ -14,6 +19,7 @@ engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread"
 USERNAME = "placeholder"
 
 def ensure_placeholder_user(session: Session) -> User:
+    """Return existing placeholder user or create one if missing."""
     user = session.exec(select(User).where(User.username == USERNAME)).first()
     if user:
         return user
@@ -34,6 +40,7 @@ def ensure_placeholder_user(session: Session) -> User:
 
 def main():
     with Session(engine) as session:
+        # Make sure the placeholder user exists, then wipe all food logs
         ensure_placeholder_user(session)
         session.exec(text("DELETE FROM foodlog;"))
         session.commit()
