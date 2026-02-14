@@ -11,29 +11,6 @@ Historical data is loaded into the database via a CSV injection script, while th
 
 ---
 
-## Architecture at a Glance
-
-```
-┌──────────────────────────────┐
-│        Dashboard View        │
-│  GET /status ──► simulator   │──► current glucose (random)
-│  (level + wellness message)  │
-└──────────────────────────────┘
-
-┌──────────────────────────────┐
-│     Glucose Trends View      │
-│  GET /glucose/trends         │──► SQLite (glucosereading table)
-│  (scatter chart via Recharts)│
-└──────────────────────────────┘
-
-┌──────────────────────────────┐
-│      Data Injection          │
-│  load_glucose_csv.py         │──► CSV → SQLite
-└──────────────────────────────┘
-```
-
----
-
 ## Backend
 
 ### Database Model (`backend/models.py`)
@@ -70,19 +47,9 @@ All endpoints require a valid JWT Bearer token.
 
 Returns the user's dashboard data, including the current simulated glucose level.
 
-- Calls `get_current_glucose_level()` from the simulator.
-- Attaches a **wellness message** based on the glucose level:
-  - `<= 130 mg/dL` → encouraging message
-  - `> 130 mg/dL` → supportive nudge
-- Response includes: `{ "glucose": { "level": 110, "status": "Normal" }, "wellness_message": "..." }`
-
 #### `GET /glucose/trends`
 
 Returns historical glucose readings within a given time range.
-
-- **Query parameters:** `start` (ISO datetime), `end` (ISO datetime)
-- Queries `GlucoseReading` rows where `timestamp_utc` falls between `start` and `end`, ordered ascending.
-- Response: `{ "readings": [{ "timestamp_utc", "glucose_mg_dl", "tag", "source" }, ...] }`
 
 ### Data Injection Scripts (`backend/data injection/`)
 
@@ -90,12 +57,6 @@ Returns historical glucose readings within a given time range.
 |-----------------------|------------------------------------------------------------------|
 | `load_glucose_csv.py` | Reads `backend/glucose_trends_from_today_jerusalem_60d.csv`, deletes existing readings for the target user, and inserts all rows. Handles UTC timestamp parsing and normalization. |
 | `reset_glucose.py`    | Deletes all rows from the `glucosereading` table.                |
-
-**CSV format** (`backend/glucose_trends_from_today_jerusalem_60d.csv`):
-```
-timestamp_utc,glucose_mg_dl,tag,source
-2026-01-24T05:00:00,110,breakfast,simulated
-```
 
 ---
 
@@ -122,28 +83,6 @@ A dedicated React component for the trends view.
 | `loading`    | True while fetching data                         |
 | `fetchError` | Error message string (if any)                    |
 | `endTime`    | Current time, rounded down to the nearest 30 min |
-
-#### Time Range Logic
-
-- **Start:** today at 08:00 AM (local time), converted to UTC.
-- **End:** current time rounded down to the nearest half-hour, converted to UTC.
-- These are passed as `start` and `end` query parameters to the API.
-
-#### Lifecycle & Data Flow
-
-1. **On mount** — a `useEffect` hook calls `GET /glucose/trends?start=...&end=...` with the Bearer token.
-2. **Data transformation** — each reading's `timestamp_utc` is converted to a millisecond epoch for Recharts' numeric time scale.
-3. **Rendering** — the component renders a `ScatterChart` (from Recharts):
-   - **X-axis:** time of day in 24-hour format (`HH:MM`), with ticks every 2 hours.
-   - **Y-axis:** glucose in mg/dL, starting from 50.
-   - **Data points:** green scatter dots (`#6FCF97`).
-   - **Tooltip:** on hover, shows the exact glucose value and timestamp.
-   - **Responsive height** — adjusts based on the number of data points.
-4. **States:** loading spinner, error message, or "No readings in this range yet" when appropriate.
-
-#### Navigation
-
-Accessible from the bottom navigation bar via the **LineChart** icon. Clicking it sets the app's `view` state to `'glucose'`, which conditionally renders `<GlucoseChart token={token} />` in `App.jsx`.
 
 ---
 
@@ -210,13 +149,6 @@ The scatter chart is populated by pre-generated data loaded into the `glucoserea
 
 The frontend's `GET /glucose/trends` endpoint then queries these pre-loaded rows, filtered by today's date range.
 
-### Why simulated data
-
-- **No hardware dependency** — developing and demonstrating the feature does not require a physical glucose monitor.
-- **Repeatable demos** — the same CSV can be reloaded at any time for consistent presentations and grading.
-- **Full-stack proof of concept** — the simulation exercises the entire pipeline (database model, API endpoint, time-range filtering, chart rendering) identically to how real data would flow.
-- **AI integration testing** — the simulator feeds glucose values into the craving analysis engine (`ai_engine.py`), allowing us to test safety-rating logic across the Low / Normal / Elevated spectrum without real readings.
-
 ---
 
 ## Future: Real Data Integration
@@ -281,23 +213,4 @@ A new backend service (cron job or background task) would:
 
 The core architecture is **already designed for real data**:
 
-| Component | Change needed |
-|-----------|--------------|
-| `GlucoseReading` model | None — columns already support real readings |
-| `GET /glucose/trends` | None — already queries by time range |
-| `GlucoseChart` component | None — renders whatever the API returns |
-| `GET /status` (dashboard) | Small — swap simulator call for a DB query |
-| `source` column | Already exists — just set to `"cgm"` or `"manual"` instead of `"simulated"` |
-| AI craving analysis | None — already uses the glucose level, regardless of origin |
-
 The only required backend change is replacing the `get_current_glucose_level()` simulator call in `GET /status` with a database lookup for the user's most recent `GlucoseReading`. Everything else is a matter of adding a new data ingestion pathway — the consumption side of the system is already production-ready.
-
----
-
-## Key Design Decisions
-
-- **Simulated vs. stored data** — the dashboard shows a simulated real-time value (no hardware dependency) while the trends chart pulls actual stored readings. This separation keeps the dashboard dynamic even when no new database entries exist.
-- **Time-range scoping** — the chart always shows today from 08:00 onward, keeping the view relevant and uncluttered.
-- **Scatter chart** — chosen over a line chart because glucose readings are discrete data points at irregular intervals; a scatter plot represents this more accurately.
-- **Utility functions** — `roundDownToHalfHour`, `buildAxisTicks`, and `formatTime24` are defined at the top of `HealthWidgets.jsx` and keep the component logic clean.
-- **JWT authentication** — every API call carries the Bearer token; the backend extracts the user identity from it, ensuring data isolation per user.
