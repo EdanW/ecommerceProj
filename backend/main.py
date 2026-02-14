@@ -251,21 +251,25 @@ def get_glucose_trends(
     end: datetime,
     current_user: User = Depends(get_current_user)
 ):
+    # Check date range validity
     if end < start:
         raise HTTPException(status_code=400, detail="End must be after start")
 
     with Session(engine_db) as session:
+        # Compose a query for glucose readings within the date range
         statement = (
             select(GlucoseReading)
             .where(
-                #GlucoseReading.user_id == current_user.id,
+                # Uncomment the line below to filter by user if needed
+                # GlucoseReading.user_id == current_user.id,
                 GlucoseReading.timestamp_utc >= start,
                 GlucoseReading.timestamp_utc <= end
             )
             .order_by(GlucoseReading.timestamp_utc)
         )
-        readings = session.exec(statement).all()
+        readings = session.exec(statement).all()  # Execute the query
 
+    # Format and return the readings as a list of dicts (ISO format for timestamps)
     return {
         "readings": [
             {
@@ -364,18 +368,21 @@ def clear_chat(current_user: User = Depends(get_current_user)):
 
 @app.get("/food_logs/today")
 def list_today_food_logs(current_user: User = Depends(get_current_user)):
+    # Get today's date in ISO format
     today = datetime.now().date().isoformat()
     with Session(engine_db) as session:
+        # Query all food logs for today (not filtered by user here)
         statement = (
             select(FoodLog)
             .where(
-                #FoodLog.user_id == current_user.id,
+                # To filter logs by user, uncomment the following line:
+                # FoodLog.user_id == current_user.id,
                 FoodLog.created_date == today
             )
             .order_by(FoodLog.meal_time)
         )
         entries = session.exec(statement).all()
-
+    # Return list of today's food log entries
     return {
         "entries": [
             {
@@ -391,11 +398,14 @@ def list_today_food_logs(current_user: User = Depends(get_current_user)):
 
 @app.get("/food_logs/today/latest")
 def get_latest_food_log(current_user: User = Depends(get_current_user)):
+    # Get today's date
     today = datetime.now().date().isoformat()
     with Session(engine_db) as session:
+        # Get all entries for today (across users)
         all_entries_today = session.exec(
             select(FoodLog).where(FoodLog.created_date == today)
         ).all()
+        # Try to fetch latest log for the current user
         statement = (
             select(FoodLog)
             .where(
@@ -406,6 +416,7 @@ def get_latest_food_log(current_user: User = Depends(get_current_user)):
             .limit(1)
         )
         entry = session.exec(statement).first()
+        # If no user log exists, get the latest entry for anyone
         if not entry and all_entries_today:
             fallback_entry = session.exec(
                 select(FoodLog)
@@ -418,6 +429,7 @@ def get_latest_food_log(current_user: User = Depends(get_current_user)):
     if not entry:
         return {"entry": None}
 
+    # Return most recent food log for today
     return {
         "entry": {
             "id": entry.id,
@@ -430,18 +442,22 @@ def get_latest_food_log(current_user: User = Depends(get_current_user)):
 
 @app.post("/food_logs")
 def create_food_log(data: FoodLogRequest, current_user: User = Depends(get_current_user)):
+    # Validate required meal_time field
     if not data.meal_time:
         raise HTTPException(status_code=400, detail="Meal time is required")
 
+    # Validate time format (must be HH:MM)
     try:
         datetime.strptime(data.meal_time, "%H:%M")
     except ValueError:
         raise HTTPException(status_code=400, detail="Meal time must be HH:MM")
 
+    # Clean and validate note length
     note = data.note.strip() if data.note else None
     if note and len(note) > 200:
         raise HTTPException(status_code=400, detail="Note must be 200 characters or less")
 
+    # Create new food log entry for user
     new_entry = FoodLog(
         user_id=current_user.id,
         meal_time=data.meal_time,
@@ -449,11 +465,13 @@ def create_food_log(data: FoodLogRequest, current_user: User = Depends(get_curre
         created_date=datetime.now().date().isoformat()
     )
 
+    # Save to database
     with Session(engine_db) as session:
         session.add(new_entry)
         session.commit()
         session.refresh(new_entry)
 
+    # Return the newly created entry
     return {
         "entry": {
             "id": new_entry.id,

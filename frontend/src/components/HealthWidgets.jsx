@@ -1,3 +1,4 @@
+// Health dashboard widgets: GlucoseChart (scatter plot) and FoodLog (meal tracker)
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { LineChart as LineChartIcon, ScrollText } from 'lucide-react';
@@ -13,6 +14,7 @@ import {
 
 const API_URL = 'http://localhost:8000';
 
+// --- Formatting helpers for chart axis labels and tooltips ---
 const formatLocalLabel = (value) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
@@ -32,6 +34,7 @@ const formatTime24 = (value) => {
     return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+// Snap a date down to the nearest :00 or :30 for a clean chart boundary
 const roundDownToHalfHour = (value) => {
     const rounded = new Date(value);
     const minutes = rounded.getMinutes();
@@ -40,6 +43,7 @@ const roundDownToHalfHour = (value) => {
     return rounded;
 };
 
+// Generate evenly-spaced tick marks between start and end (ms timestamps)
 const buildAxisTicks = (startMs, endMs, intervalMs) => {
     if (!startMs || !endMs || endMs <= startMs || !intervalMs) return null;
     const ticks = [];
@@ -52,12 +56,14 @@ const buildAxisTicks = (startMs, endMs, intervalMs) => {
     return ticks;
 };
 
+// Displays today's glucose readings as a scatter chart (08:00 → now)
 export function GlucoseChart({ token }) {
     const [endTime] = useState(() => roundDownToHalfHour(new Date()));
     const [readings, setReadings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState('');
 
+    // Time window: today 08:00 up to the current half-hour
     const startTime = new Date(endTime);
     startTime.setHours(8, 0, 0, 0);
     const startUtc = startTime.toISOString();
@@ -67,6 +73,7 @@ export function GlucoseChart({ token }) {
     const axisTicks = buildAxisTicks(startMs, endMs, 2 * 60 * 60 * 1000);
     const displayError = fetchError;
 
+    // Fetch glucose readings from the API whenever the time window or token changes
     useEffect(() => {
         if (!token) return;
 
@@ -96,6 +103,7 @@ export function GlucoseChart({ token }) {
         return () => { isActive = false; };
     }, [startUtc, endUtc, token]);
 
+    // Transform API readings into chart-friendly objects with ms timestamps
     const chartData = readings.map(reading => {
         const timestampMs = new Date(reading.timestamp_utc).getTime();
         return {
@@ -176,6 +184,7 @@ export function GlucoseChart({ token }) {
     );
 }
 
+// Meal logging form + display of the most recent entry for today
 export function FoodLog({ token }) {
     const MAX_NOTE_LENGTH = 200;
     const [mealTime, setMealTime] = useState('');
@@ -187,6 +196,7 @@ export function FoodLog({ token }) {
 
     const noteRemaining = MAX_NOTE_LENGTH - note.length;
 
+    // On mount, fetch the latest food log entry for today
     useEffect(() => {
         if (!token) return;
         let isActive = true;
@@ -215,6 +225,7 @@ export function FoodLog({ token }) {
         return () => { isActive = false; };
     }, [token]);
 
+    // Re-fetch latest entry (called after a successful submit)
     const refreshLatest = async () => {
         setLoading(true);
         setError('');
@@ -231,6 +242,7 @@ export function FoodLog({ token }) {
         }
     };
 
+    // Validate inputs, POST the new food log, then refresh the displayed entry
     const submitLog = async (event) => {
         event.preventDefault();
         if (!mealTime) {

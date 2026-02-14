@@ -181,3 +181,90 @@ textarea::placeholder {
     border-left: 4px solid #6FCF97;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
+
+/* Hero CTA Button */
+.hero-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 24px 16px !important;
+    font-size: 17px;
+    box-shadow: 0 6px 20px rgba(162, 155, 254, 0.35);
+    margin-bottom: 18px;
+}
+.hero-btn-icon {
+    margin-bottom: 2px;
+}
+.hero-btn-text {
+    font-size: 16px;
+    font-weight: 700;
+}
+.hero-btn-sub {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.85;
+}
+.hero-btn:hover {
+    background: linear-gradient(90deg, #8B80FE, #E871A0) !important;
+    box-shadow: 0 8px 28px rgba(162, 155, 254, 0.5);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+.hero-btn {
+    transition: all 0.2s ease;
+}
+
+/* Stats Row */
+.stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 10px !important;
+    margin-bottom: 0 !important;
+    border-radius: 16px !important;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.07);
+}
+.stat-value {
+    font-weight: 700;
+    font-size: 18px;
+}
+.stat-card .unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: #888;
+}
+
+/* Daily Tip Card */
+.tip-card {
+    background: linear-gradient(135deg, #F9FAFB, #F0F4FF) !important;
+    border: 1px solid #E8ECF4 !important;
+    padding: 16px 18px !important;
+}
+.tip-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.tip-icon {
+    font-size: 18px;
+}
+.tip-text {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+    margin: 0;
+}
