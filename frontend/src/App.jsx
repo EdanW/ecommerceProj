@@ -185,7 +185,7 @@ function CravingTool({ setView, token }) {
 
             {result && !result.complete && (
                 <div className="ai-feedback-box fade-in">
-                  <p style={{fontSize:'18px', fontWeight:'500', color:'#F48FB1', marginTop:'5px'}}>
+                  <p style={{fontSize:'18px', fontWeight:'500', color:'#D81B60', marginTop:'5px'}}>
                     {result.follow_up_question}
                   </p>
                 </div>
