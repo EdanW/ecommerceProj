@@ -22,7 +22,13 @@ def predict(json_input):
 
     #2. discard irrelevant foods
     valid_candidates = filter_by_constraints(food_df, json_input)
-    
+    if valid_candidates.empty:
+        return {
+            "food": None,
+            "reason": "no foods in POC database that support this scenario",
+            "another_option": None
+        }
+
     best_matches, top_reason = get_best_matches(json_input, valid_candidates)
 
     # Guard

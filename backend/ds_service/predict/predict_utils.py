@@ -48,7 +48,6 @@ def filter_by_constraints(foods_df, user_input):
     target_meal = user_input['craving'].get('meal_type')
     
     if target_meal:
-        print('keeping only this target meal!!!',target_meal)
         target_meal = target_meal.lower()
         if 'meal_type' in valid_foods.columns:
             valid_foods = valid_foods[valid_foods['meal_type'].str.lower() == target_meal]        
