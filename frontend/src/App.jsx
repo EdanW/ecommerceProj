@@ -92,13 +92,38 @@ function Dashboard({ setView, token, logout }) {
             )}
       </div>
 
-      <div className="card glucose-card">
-          <div className="row"><Activity color="#F48FB1" /><span>Current Glucose</span></div>
-          <h1 className={data.glucose.level > 140 ? "alert-text" : "normal-text"}>
-              {data.glucose.level} <span className="unit">mg/dL</span>
-          </h1>
+      <button className="crave-btn hero-btn" onClick={() => setView('craving')}>
+        <span className="hero-btn-icon"><Utensils size={22} /></span>
+        <span className="hero-btn-text">Tell me what you're craving ✨</span>
+        <span className="hero-btn-sub">AI-powered advice for you & baby</span>
+      </button>
+
+      <div className="stats-row">
+        <div className="card stat-card" onClick={() => setView('glucose')} style={{cursor:'pointer'}}>
+            <Activity size={20} color="#F48FB1" />
+            <span className="stat-value" style={{color: data.glucose.level > 140 ? '#FF5252' : '#333'}}>
+                {data.glucose.level}
+            </span>
+            <span className="tiny-text">mg/dL · Glucose</span>
+        </div>
+        <div className="card stat-card" onClick={() => setView('foodlog')} style={{cursor:'pointer'}}>
+            <ScrollText size={20} color="#6FCF97" />
+            <span className="stat-value">Food Log</span>
+            <span className="tiny-text">Track your meals</span>
+        </div>
       </div>
-      <button className="crave-btn" onClick={() => setView('craving')}><Utensils size={18} /> Tell me what you're craving ✨</button>
+
+      <div className="card tip-card">
+        <div className="tip-header">
+          <span className="tip-icon">💡</span>
+          <span style={{fontWeight:'600', fontSize:'13px'}}>Daily Tip</span>
+        </div>
+        <p className="tip-text">
+          {data.pregnancy_data
+            ? "Staying hydrated helps regulate glucose levels. Aim for 8-10 glasses of water today!"
+            : "Small, frequent meals can help keep your energy steady throughout the day."}
+        </p>
+      </div>
     </div>
   );
 }
