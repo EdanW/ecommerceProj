@@ -112,12 +112,25 @@ class AIEngine:
                 user_message, glucose_level, glucose_history, pregnancy_week, user_id
             )
 
-        # Unsure response 
+        # Unsure / undecided initial message — prompt for preferences
         if is_unsure_response(user_message):
             craving_data = build_unsure_craving_data()
-            return self._build_complete_response(
-                craving_data, glucose_level, glucose_history, pregnancy_week
-            )
+            self.pending_extractions[user_id] = {
+                "craving_data": craving_data,
+                "glucose_level": glucose_level,
+                "pregnancy_week": pregnancy_week,
+                "missing": "food",
+                "created_at": datetime.now(),
+            }
+            return {
+                "complete": False,
+                "follow_up_question": (
+                    "No problem! Are you in the mood for something "
+                    "sweet, salty, savory, or something else?"
+                ),
+                "missing_field": "food",
+                "partial_data": craving_data,
+            }
 
         doc = nlp(user_message)
 
@@ -137,9 +150,9 @@ class AIEngine:
             "intensity": intensity,
         }
 
-        # Case 1 - No wanted foods or categories specified (maybe exclusions, or totally vague)
+        # Case 1 — No positive food or category signal
         if not wanted_foods and not wanted_categories:
-            # 1A) User only gave exclusions 
+            # 1A — Only exclusions provided
             if excluded_foods or excluded_categories:
                 if excluded_foods:
                     excluded_text = human_list(excluded_foods)
@@ -165,7 +178,7 @@ class AIEngine:
                     "partial_data": craving_data,
                 }
 
-            # 1B) No actionable input - check if message is food-related at all
+            # 1B — Off-topic detection
             if not self._is_food_related(user_message):
                 logger.info("Off-topic message detected: %s", user_message)
                 return {
@@ -177,7 +190,7 @@ class AIEngine:
                     ),
                 }
 
-            # 1C) Food-related but vague - ask for clarification
+            # 1C — Food-related but too vague to act on
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
                 "glucose_level": glucose_level,
@@ -193,7 +206,7 @@ class AIEngine:
                 "partial_data": craving_data,
             }
 
-        # Case 2 - Wanted categories but no foods, missing meal type
+        # Case 2 — Categories present but meal context unknown
         if not wanted_foods and wanted_categories and not meal_type:
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
@@ -214,7 +227,7 @@ class AIEngine:
                 "partial_data": craving_data,
             }
 
-        # Case 3 - All required info present
+        # Case 3 — Sufficient information to recommend
         return self._build_complete_response(craving_data, glucose_level, glucose_history, pregnancy_week)
 
     def _handle_follow_up(
@@ -236,7 +249,7 @@ class AIEngine:
         craving_data = pending["craving_data"]
         missing_field = pending.get("missing")
 
-        # User is unsure — pass what we have to the model
+        # Still unsure on follow-up — proceed with whatever data we have
         if is_unsure_response(user_message):
             excluded_foods = craving_data.get("excluded_foods", [])
             excluded_categories = craving_data.get("excluded_categories", [])
