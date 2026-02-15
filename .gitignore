@@ -44,3 +44,4 @@ coverage/
 .coverage
 .pytest_cache/
 
+backend/database.db
