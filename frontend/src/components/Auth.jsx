@@ -77,7 +77,7 @@ export function Auth({ setToken }) {
   return (
       <div className="login-screen">
            <div className="text-center mb-20" style={{marginTop: '40px'}}>
-            <h1 className="logo-text" style={{fontSize: '42px', margin: 0}}>Eat42</h1>
+            <h1 className="logo-text" style={{fontSize: '42px', margin: 0}}>Nouri</h1>
             <p style={{color: '#888', fontSize: '14px'}}>From Restriction to Support</p>
           </div>
 
