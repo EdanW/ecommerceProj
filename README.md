@@ -74,4 +74,4 @@ npm run dev
 
 ## Data Science and Recommendation System
 
-Attached as a seperate PDF under backend/ds_service for better formatting.
+Attached as a seperate PDF under ds_insights_and_utils for better formatting.
