@@ -5,7 +5,6 @@ import os
 
 from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
 
-
 # --- CONFIG ---
 NUM_SAMPLES = 50000 
 OUTPUT_FILE = "backend/ds_service/data/synthetic_diabetes_data.csv"
