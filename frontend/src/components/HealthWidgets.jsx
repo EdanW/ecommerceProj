@@ -66,6 +66,10 @@ export function GlucoseChart({ token }) {
     // Time window: today 08:00 up to the current half-hour
     const startTime = new Date(endTime);
     startTime.setHours(8, 0, 0, 0);
+    //handle post midnight checks
+    if (endTime < startTime) {
+        startTime.setDate(startTime.getDate() - 1);
+    }
     const startUtc = startTime.toISOString();
     const endUtc = endTime.toISOString();
     const startMs = startTime.getTime();
