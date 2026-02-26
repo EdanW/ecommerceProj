@@ -1,10 +1,10 @@
-# Eat42 - Gestational Diabetes Craving Assistant
+# Nouri - Gestational Diabetes Craving Assistant
 
 A web application that helps pregnant women with gestational diabetes find satisfying food alternatives that align with their glucose levels.
 
 ## Overview
 
-Eat42 takes a user's food craving as free-text input, extracts structured information using NLP (SpaCy), and combines it with real-time glucose data and pregnancy context to recommend suitable food options through a scoring-based recommendation model.
+Nouri takes a user's food craving as free-text input, extracts structured information using NLP (SpaCy), and combines it with real-time glucose data and pregnancy context to recommend suitable food options through a scoring-based recommendation model.
 
 ## Architecture
 

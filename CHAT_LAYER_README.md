@@ -2,7 +2,7 @@
 
 ## Overview
 
-The chat layer is the NLP pipeline that converts a user's free-text food craving into a structured JSON payload. It powers the **Eat42** Gestational Diabetes Craving Assistant.
+The chat layer is the NLP pipeline that converts a user's free-text food craving into a structured JSON payload. It powers the **Nouri** Gestational Diabetes Craving Assistant.
 
 The pipeline handles:
 - Extracting foods, categories, meal types, and intensity from natural language

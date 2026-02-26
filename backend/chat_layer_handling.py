@@ -1,5 +1,5 @@
 """
-Chat layer for the Gestational Diabetes Craving Assistant (Eat42).
+Chat layer for the Gestational Diabetes Craving Assistant (Nouri).
 
 Parses a user's free-text craving into a structured JSON payload for the
 recommendation model, with negation-aware extraction and short follow-ups
