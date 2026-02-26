@@ -7,8 +7,10 @@ import os
 
 _MODEL = None
 _MODEL_PATH = "backend/ds_service/models/food_safety_model.pkl"
+
 def load_model():
-    """Singleton pattern to load model only once."""
+    # lazy load — only reads the .pkl file the first time, then keeps it in memory.
+    # avoids reloading the model on every single request which would be very slow.
     global _MODEL
     if _MODEL is None:
         if not os.path.exists(_MODEL_PATH):
@@ -19,45 +21,42 @@ def load_model():
 
 
 def filter_by_constraints(foods_df, user_input):
+    # takes the full food database and progressively narrows it down based on
+    # what the user said. each step removes more foods from the pool.
     print("entered filter_by_constraints")
 
-    # 1. Start with all foods
     valid_foods = foods_df.copy()
 
-    # 1b. Always strip pure condiments from the candidate pool.
-    #     Condiments are toppings/sauces/spreads — never a standalone food recommendation
-    #     (butter, ketchup, mayo, ranch, soy sauce, etc.).
-    #     Drinks are NOT excluded here — milkshakes, smoothies, and coffees are
-    #     legitimate cravings and should remain recommendable.
-    #     Exception: if the user explicitly requested the condiment by name, keep it.
+    # remove condiments (butter, ketchup, mayo, ranch, soy sauce…)
     requested_foods = [f.lower() for f in user_input['craving'].get('foods', [])]
     valid_foods = valid_foods[valid_foods['categories'].apply(
         lambda cats: isinstance(cats, list) and "condiment" not in [c.lower() for c in cats]
     ) | valid_foods['name'].str.lower().isin(requested_foods)]
 
-    # 2. User Requested Exclusions (Foods)
+    # remove anything the user explicitly said they don't want
     excluded_foods = [f.lower() for f in user_input['craving'].get('excluded_foods', [])]
     if excluded_foods:
         valid_foods = valid_foods[~valid_foods['name'].str.lower().isin(excluded_foods)]
 
-    # 3. User Requested Exclusions (Categories)
+    # remove entire categories the user excluded
     excluded_cats = [c.lower() for c in user_input['craving'].get('excluded_categories', [])]
     if excluded_cats:
-        # Since 'categories' is a list (['sweet', 'snack']), we check for intersection
         valid_foods = valid_foods[valid_foods['categories'].apply(
             lambda cats: not any(c.lower() in excluded_cats for c in cats)
         )]
-    
-    # 4. Whitelist - include only desired categories
+
+    # whitelist filter — only keep foods that match at least one requested category
     target_cats = [c.lower() for c in user_input['craving'].get('categories', [])]
     if target_cats:
-        # Logic: Keep food IF it shares AT LEAST ONE category with the request
         valid_foods = valid_foods[valid_foods['categories'].apply(
             lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(target_cats)
         )]
 
-    # 5. Filter for same meal type — but always keep user-requested foods so the
-    #    model can score them (and legitimately suggest an alternative if needed).
+    # meal type filter (breakfast / lunch / dinner / snack)
+    # pasta is tagged as "dinner" in our DB, so if someone asks for lunch,
+    # we'd normally remove it from the pool entirely and never consider it.
+    # to fix that, we re-add any food the user explicitly named even if the
+    # meal type doesn't match — the model will still score it and decide.
     target_meal = user_input['craving'].get('meal_type')
 
     if target_meal:
@@ -65,7 +64,6 @@ def filter_by_constraints(foods_df, user_input):
         if 'meal_type' in valid_foods.columns:
             meal_match = valid_foods['meal_type'].str.lower() == target_meal
             meal_filtered = valid_foods[meal_match]
-            # Re-add explicitly requested foods that were dropped by meal-type filter
             if requested_foods:
                 requested_but_dropped = valid_foods[
                     valid_foods['name'].str.lower().isin(requested_foods) & ~meal_match
@@ -81,77 +79,75 @@ def filter_by_constraints(foods_df, user_input):
 
 def generate_reason(features):
     """
-    Explains WHY the top choice is safe/good.
-    features: dict or Series of the top food's data.
+    Builds a one-line explanation of why the top food was picked.
+    Looks at glucose trend, time of day, GI, and sugar content
+    and picks the most relevant thing to tell the user.
     """
     reasons = []
-    
-    # 1. Biological Context
+
+    # check glucose context first
     if features.get('glucose_trend', 0) == -1:
         reasons.append("is safe while your levels are trending down")
     elif features.get('glucose_level', 100) < 90:
         reasons.append("helps maintain your current stable levels")
-        
-    if features.get('time_of_day') == 0: # Morning
+
+    if features.get('time_of_day') == 0:  # morning
         reasons.append("fits your high morning insulin sensitivity")
     elif features.get('time_of_day') == 3 and features.get('food_carbs', 0) < 30:
         reasons.append("is light enough for late-night digestion")
 
-    # 2. Food Properties
+    # food-specific properties
     if features.get('food_gi', 50) < 55:
         reasons.append("has a low Glycemic Index to prevent spikes")
     if features.get('food_sugar', 0) < 5:
         reasons.append("has minimal sugar")
 
-    # 3. Construct Sentence
     if not reasons:
         return "This fits within your calculated safety limits."
-    
+
     return f"This option {reasons[0]}."
 
 
 def get_best_matches(user_json, candidates_df):
     """
-    Orchestrates the scoring and ranking.
-    Returns: 
-        Tuple (Dataframe of top 2 matches, string reason for the first one)
+    Scores every food in candidates_df against the user's current glucose state
+    using the XGBoost classifier, then returns the top 2 results.
+
+    The model outputs a probability from 0 to 1 — how likely this food is "safe"
+    for this user right now. We sort by that score and take the top 2.
+
+    Returns: (top_2_dataframe, reason_string_for_winner)
     """
     model = load_model()
-    # A. Feature Engineering
+
+    # build a feature vector for each food by combining user state + food nutrition
     feature_rows = []
     for _, food_item in candidates_df.iterrows():
         food_dict = food_item.to_dict()
         vector = create_features(user_json, food_dict)
         feature_rows.append(vector)
-    
+
     X_full = pd.DataFrame(feature_rows)
 
-    # B. Model Prediction (The Brain)
-    model_cols = ['glucose_level', 'glucose_avg', 'glucose_trend', 'pregnancy_week', 
+    # the model was trained with exactly these 9 features in this order
+    model_cols = ['glucose_level', 'glucose_avg', 'glucose_trend', 'pregnancy_week',
                   'intensity', 'time_of_day', 'food_gi', 'food_carbs', 'food_sugar']
 
-    # Ensure X only has the columns the model expects
-    X_model = X_full[model_cols]    
+    X_model = X_full[model_cols]
 
-    # C. Model Prediction
+    # predict_proba returns [prob_class_0, prob_class_1] — we want class 1 (safe)
     scores = model.predict_proba(X_model)[:, 1]
 
-    # D. Assign Scores
     candidates_df = candidates_df.copy()
     candidates_df['safety_score'] = scores
-    
-    # E. Rank & Slice (Top 2 Only)
+
     best_matches = candidates_df.sort_values(by='safety_score', ascending=False).head(2)
-    
-    # F. Generate Reason for the Winner
+
+    # generate a human-readable reason for why the top pick was chosen
     top_reason = "No recommendation found."
     if not best_matches.empty:
-        # Get the feature vector for the top match to explain it
         top_index = best_matches.index[0]
-        # We need the features we created in step A corresponding to this index
-        # (Assuming the index was preserved from candidates_df)
         top_features = feature_rows[candidates_df.index.get_loc(top_index)]
-        
         top_reason = generate_reason(top_features)
 
     return best_matches, top_reason

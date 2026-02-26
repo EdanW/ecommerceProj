@@ -72,13 +72,16 @@ ecommerceProj/
 ├── ds_insights_and_utils/
 │   ├── generate_synthetic_data.py     # Generates 50K labeled training samples via risk oracle
 │   ├── train_model.py                 # Trains XGBoost with 5-fold CV, saves food_safety_model.pkl
-│   ├── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
-│   └── DS_README.pdf                  # Full data science write-up
+│   └── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
 ├── frontend/
 │   └── src/
 │       ├── App.jsx                    # Root component + routing
 │       └── components/                # Auth, Dashboard, Profile, Charts, FoodLog
-└── README.md
+├── README.md
+├── MODEL_README.md                    # Full data science write-up (math, pipeline, decisions)
+├── CHAT_LAYER_README.md
+├── FOOD_LOG_README.md
+└── GLUCOSE_LEVELS_README.md
 ```
 
 ---
@@ -147,4 +150,4 @@ The model was trained on **50,000 synthetically generated scenarios** labeled by
 
 Model performance was evaluated against two baselines: a random guesser and a static carb/sugar heuristic (the kind of rule a dietitian might give verbally). The XGBoost model outperforms both, particularly in cases where context matters — for example, the same food can be safe in the morning but risky at night or during a glucose spike.
 
-Full write-up, metrics, and analysis attached as a PDF under `ds_insights_and_utils/DS_README.pdf`.
+Full write-up, including the math behind the oracle risk function, the XGBoost loss function and gradient boosting mechanics, worked examples, and prediction pipeline details can be found in [`MODEL_README.md`](MODEL_README.md).

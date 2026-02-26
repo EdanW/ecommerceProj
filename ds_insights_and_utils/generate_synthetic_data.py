@@ -6,137 +6,139 @@ import os
 from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
 
 # --- CONFIG ---
-NUM_SAMPLES = 50000 
+NUM_SAMPLES = 50000  # 50k examples gives the model enough variety without being overkill
 OUTPUT_FILE = "backend/ds_service/data/synthetic_diabetes_data.csv"
 
 def generate_data():
     data = []
     food_names = list(FOOD_DB.keys())
-    
+
     print(f"🚀 Generating {NUM_SAMPLES} aligned scenarios...")
 
     for _ in range(NUM_SAMPLES):
-        # --- A. Random User Context ---
-        
-        # 1. Glucose Baseline (New Feature)
-        # Represents the user's general health (A1C proxy). 
-        # Higher avg = more likely to spike.
-        glucose_avg = int(np.random.normal(105, 15)) 
+        # ── A. Random User Context ───────────────────────────────────────────
+
+        # rolling glucose average — similar to what A1C measures in the clinic.
+        # represents how well-controlled the user's diabetes is overall.
+        # people with a higher average are more sensitive to carb spikes.
+        glucose_avg = int(np.random.normal(105, 15))
         glucose_avg = max(80, min(180, glucose_avg))
-        
-        # 2. Current Glucose (Fluctuates around avg)
+
+        # today's actual glucose reading fluctuates around the baseline.
+        # clamped to physiologically realistic min/max values.
         glucose_level = int(np.random.normal(glucose_avg, 25))
         glucose_level = max(60, min(350, glucose_level))
-        
-        # 3. Trend (-1: Falling, 0: Stable, 1: Rising)
+
+        # which direction is glucose heading right now?
+        # -1 = falling, 0 = stable, 1 = rising
+        # a rising trend is dangerous if you eat something sugary on top of it
         glucose_trend = np.random.choice([-1, 0, 1])
-        
-        # 4. Time (0: Morning, 1: Afternoon, 2: Evening, 3: Night)
-        # We assume your encoder maps Night to 3
-        time_of_day = np.random.choice([0, 1, 2, 3]) 
-        
-        # 5. Pregnancy & Intensity (New Features)
-        pregnancy_week = np.random.randint(4, 42) # Weeks 4 to 42
+
+        # time of day affects insulin sensitivity throughout the day.
+        # morning (0) = most sensitive, night (3) = most resistant.
+        # 0=Morning, 1=Afternoon, 2=Evening, 3=Night
+        time_of_day = np.random.choice([0, 1, 2, 3])
+
+        # pregnancy week: insulin resistance increases a lot in late 2nd/3rd trimester
+        # intensity: high intensity (2) implies possible stress/cortisol, slightly raises risk
+        pregnancy_week = np.random.randint(4, 42)
         intensity = np.random.choice([0, 1, 2])   # 0=Low, 1=Med, 2=High
 
-        # --- B. Pick a Food ---
+        # ── B. Pick a Random Food ────────────────────────────────────────────
         food_name = random.choice(food_names)
         stats = FOOD_DB[food_name]
-        
-        # Add 10% noise so values aren't static
+
+        # add small random noise so the model sees slight variation —
+        # real-world values won't be exactly the same every time either
         noise = np.random.uniform(0.9, 1.1)
         food_carbs = round(stats.get("carbs", 10) * noise, 1)
         food_sugar = round(stats.get("sugar", 2) * noise, 1)
-        food_gi = stats.get("glycemic_index", 50) # GI is usually constant
+        food_gi = stats.get("glycemic_index", 50)  # GI doesn't really vary per serving
 
-        # --- C. The "Oracle" Risk Logic ---
-        # Calculates the Ground Truth Label
-        
+        # ── C. Oracle Risk Score ─────────────────────────────────────────────
+        # this is the "ground truth" that we train the model against.
+        # the model will learn to approximate this logic from the 50k examples.
+        #
+        # risk = (carbs + sugar weighted) * GI factor * context multipliers
+
         risk_score = 0
-        
-        # 1. Base Impact (Carbs & Sugar)
-        risk_score += (food_carbs * 1.0) 
+
+        # base impact: sugar is weighted 1.5x because it hits faster than complex carbs
+        risk_score += (food_carbs * 1.0)
         risk_score += (food_sugar * 1.5)
-        
-        # 2. GI Multiplier
-        # High GI foods hit harder
-        gi_factor = food_gi / 50.0 
+
+        # GI multiplier: high-GI foods cause sharper glucose spikes
+        # a food at GI=100 doubles the base risk compared to GI=50
+        gi_factor = food_gi / 50.0
         risk_score *= gi_factor
 
-        # 3. User Context Multipliers
-        
-        # High Current Glucose
-        if glucose_level > 160: risk_score *= 1.5
-        
-        # Rising Trend (Dangerous with sugar)
-        if glucose_trend == 1: 
-            risk_score += (food_sugar * 2.0)
-            
-        # Night Time (3) = High Insulin Resistance
-        if time_of_day == 3: 
-            risk_score *= 1.4
-            
-        # Pregnancy Stage 
-        # Insulin resistance increases significantly in late 2nd/3rd trimester
+        # context multipliers — these adjust risk based on the user's current state
+        if glucose_level > 160:
+            risk_score *= 1.5   # already high — any extra glucose is a bigger deal
+
+        if glucose_trend == 1:
+            risk_score += (food_sugar * 2.0)  # rising + eating sugar = bad combo
+
+        if time_of_day == 3:
+            risk_score *= 1.4   # night = high insulin resistance, harder to process carbs
+
         if pregnancy_week > 24:
-            risk_score *= 1.25
-            
-        # Chronic High Avg Glucose (General Resistance)
+            risk_score *= 1.25  # late pregnancy causes significant insulin resistance
+
         if glucose_avg > 120:
-            risk_score *= 1.2
-            
-        # Intensity 
-        # (Minor factor: High intensity might imply stress/cortisol, slightly increasing risk)
+            risk_score *= 1.2   # chronically high average = less metabolic flexibility
+
         if intensity == 2:
-            risk_score *= 1.1
+            risk_score *= 1.1   # high stress slightly elevates baseline risk
 
-        # 4. Labeling with Dynamic + Noisy Threshold
+        # ── D. Dynamic Threshold ─────────────────────────────────────────────
+        # whether a food gets labelled "safe" depends on the user's current glucose.
+        # we can't use a single fixed cutoff for everyone.
         #
-        # The old fixed threshold of 45 was too aggressive — it labelled pasta
-        # as UNSAFE even at perfectly normal glucose (140 mg/dL), because the
-        # pregnancy-week multiplier alone pushed pasta's risk over 45.
-        # The model therefore learned "zero-carb foods always win", causing it
-        # to recommend tuna regardless of what the user asked for.
+        # original bug: we used a fixed threshold of 45, which meant pasta (risk ~56)
+        # was ALWAYS labelled unsafe even when the user's glucose was totally normal.
+        # the model then learned "zero-carb foods always win" and recommended tuna
+        # for literally every request. not ideal.
         #
-        # Fix: base threshold scales with current glucose level so that moderate-
-        # carb foods (pasta, bread, grains) are correctly labelled SAFE when the
-        # user's glucose is in a healthy range.
+        # fix: the threshold scales with current glucose level.
+        # low glucose → more permissive (pasta is fine at 115 mg/dL)
+        # normal range → moderate (most regular foods are okay)
+        # high glucose → strict (limit carbs/sugar hard)
         if glucose_level < 120:
-            base_threshold = 75   # Low glucose  → very permissive
+            base_threshold = 75
         elif glucose_level < 160:
-            base_threshold = 60   # Normal range → moderate (pasta fits here)
+            base_threshold = 60
         else:
-            base_threshold = 35   # High glucose → strict
+            base_threshold = 35
 
+        # small noise on the threshold so the model sees a distribution of examples
+        # near the boundary, not a hard cliff
         threshold_noise = np.random.normal(0, 3.0)
         effective_threshold = base_threshold + threshold_noise
 
         is_safe = 1 if risk_score < effective_threshold else 0
-        
-        # --- D. Append Data (Matching 9 Features EXACTLY) ---
+
+        # ── E. Save Row ──────────────────────────────────────────────────────
         data.append({
-            # User
+            # user state
             "glucose_level": glucose_level,
             "glucose_avg": glucose_avg,
             "glucose_trend": glucose_trend,
             "pregnancy_week": pregnancy_week,
             "intensity": intensity,
             "time_of_day": time_of_day,
-            # Food
+            # food nutrition
             "food_gi": food_gi,
             "food_carbs": food_carbs,
             "food_sugar": food_sugar,
-            # Target
+            # label
             "is_safe": is_safe
         })
 
-    # Save
     df = pd.DataFrame(data)
-    # Ensure directory exists
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
-    
-    # Stats
+
     safe_count = df['is_safe'].sum()
     print(f"✅ Saved {len(df)} rows to {OUTPUT_FILE}")
     print(f"📊 Class Balance: Safe={safe_count} ({safe_count/len(df):.0%}) | Unsafe={len(df)-safe_count}")
