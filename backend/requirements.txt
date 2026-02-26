@@ -5,8 +5,6 @@ sqlmodel
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
-openai
-google-generativeai
 spacy
 
 # Data Science & ML
@@ -15,4 +13,3 @@ pandas
 scikit-learn
 xgboost
 joblib
-tabulate
