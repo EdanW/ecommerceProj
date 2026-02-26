@@ -68,11 +68,16 @@ ecommerceProj/
 │   │   │   └── food_safety_model.pkl  # Trained XGBoost model
 │   │   └── utils/
 │   │       └── chat_layer_ds_utils.py # Glucose trend analysis
-│   └── data injection/                # Standalone scripts to seed the DB from CSV
+│   └── data injection/
+│       ├── load_glucose_csv.py        # Seeds GlucoseReading rows from CSV
+│       ├── load_foodlog_csv.py        # Seeds FoodLog rows from CSV
+│       ├── reset_glucose.py           # Clears all glucose readings from the DB
+│       └── reset_foodlog.py           # Clears all food log entries from the DB
 ├── ds_insights_and_utils/
 │   ├── generate_synthetic_data.py     # Generates 50K labeled training samples via risk oracle
 │   ├── train_model.py                 # Trains XGBoost with 5-fold CV, saves food_safety_model.pkl
-│   └── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
+│   ├── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
+│   └── fix_categories.py              # One-time utility: backfilled type-category tags in the food DB
 ├── frontend/
 │   └── src/
 │       ├── App.jsx                    # Root component + routing
