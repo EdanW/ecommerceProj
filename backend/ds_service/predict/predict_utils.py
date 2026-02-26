@@ -45,11 +45,18 @@ def filter_by_constraints(foods_df, user_input):
             lambda cats: not any(c.lower() in excluded_cats for c in cats)
         )]
 
-    # whitelist filter — only keep foods that match at least one requested category
+    # whitelist filter — only keep foods that match at least one requested category.
+    _CATEGORY_ALIASES = {
+        "salty":  ["salty", "savory"],
+        "savory": ["savory", "salty"],
+    }
     target_cats = [c.lower() for c in user_input['craving'].get('categories', [])]
     if target_cats:
+        expanded_cats = set()
+        for cat in target_cats:
+            expanded_cats.update(_CATEGORY_ALIASES.get(cat, [cat]))
         valid_foods = valid_foods[valid_foods['categories'].apply(
-            lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(target_cats)
+            lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(expanded_cats)
         )]
 
     # meal type filter (breakfast / lunch / dinner / snack)

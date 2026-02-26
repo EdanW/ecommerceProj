@@ -249,14 +249,27 @@ class AIEngine:
         craving_data = pending["craving_data"]
         missing_field = pending.get("missing")
 
-        # Still unsure on follow-up — proceed with whatever data we have
+        # Still unsure on follow-up — proceed with whatever data we have.
+        # BUT we still parse the message for exclusions and meal type first,
+        # because the user might say "I don't know but no pasta" or "I want dinner
+        # but I'm not sure what" — we shouldn't throw that info away.
         if is_unsure_response(user_message):
-            excluded_foods = craving_data.get("excluded_foods", [])
-            excluded_categories = craving_data.get("excluded_categories", [])
+            doc = nlp(user_message)
+            _, new_excluded_foods = extract_foods_with_negation_spacy(doc, user_message)
+            _, new_excluded_categories = extract_categories_with_negation_spacy(
+                doc, user_message, [], new_excluded_foods
+            )
+            excluded_foods = list(set(craving_data.get("excluded_foods", []) + new_excluded_foods))
+            excluded_categories = list(set(craving_data.get("excluded_categories", []) + new_excluded_categories))
             del self.pending_extractions[user_id]
             unsure_data = build_unsure_craving_data(
                 excluded_foods=excluded_foods,
                 excluded_categories=excluded_categories,
+            )
+            # Preserve the meal_type from the previous turn — without this it
+            # defaults to "snack" and we get completely wrong suggestions
+            unsure_data["meal_type"] = (
+                extract_meal_type_spacy(doc, []) or craving_data.get("meal_type")
             )
             return self._build_complete_response(
                 unsure_data, glucose_level, glucose_history, pregnancy_week

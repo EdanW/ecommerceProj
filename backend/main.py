@@ -98,12 +98,13 @@ def _generate_meal_message(meal_assessment: dict, glucose_level: int, glucose_st
     """Build a user-facing message for a multi-food meal request."""
     parts_approved = []
     parts_swapped = []   # list of (original_food, resolved_food)
+    unresolved = []      # foods we couldn't find a safe alternative for
 
     for original, info in meal_assessment.items():
         resolved = info.get("resolved")
         if resolved is None:
-            continue
-        if not info.get("redirected"):
+            unresolved.append(original)
+        elif not info.get("redirected"):
             parts_approved.append(resolved)
         else:
             parts_swapped.append((original, resolved))
@@ -116,8 +117,11 @@ def _generate_meal_message(meal_assessment: dict, glucose_level: int, glucose_st
         context = f"Your glucose looks good ({glucose_level} mg/dL)"
 
     if parts_approved and not parts_swapped:
-        foods_str = " and ".join(parts_approved)
-        message = f"{context} — {foods_str} both look great for your meal! 🎉"
+        if len(parts_approved) == 1:
+            message = f"{context} — {parts_approved[0]} is a great option for you right now!"
+        else:
+            foods_str = " and ".join(parts_approved)
+            message = f"{context} — {foods_str} both look great for your meal! 🎉"
     elif parts_swapped and not parts_approved:
         swaps = " and ".join(f"{r} instead of {o}" for o, r in parts_swapped)
         message = f"{context} — I'd go with {swaps} for a safer option!"

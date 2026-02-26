@@ -209,7 +209,7 @@ FOOD_DATABASE = {
 
     # ==================== SALTY SNACKS ====================
     "chips": {"id": 119, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 15, "sugar": 0},
-    "potato chips": {"id": 120, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 70, "carbs": 15, "sugar": 0},
+    "potato chips": {"id": 120, "categories": ["salty", "crunchy", "potato"], "meal_type": "snack", "glycemic_index": 70, "carbs": 15, "sugar": 0},
     "tortilla chips": {"id": 121, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 72, "carbs": 18, "sugar": 0},
     "doritos": {"id": 122, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 72, "carbs": 18, "sugar": 1},
     "cheetos": {"id": 123, "categories": ["salty", "crunchy"], "meal_type": "snack", "glycemic_index": 74, "carbs": 15, "sugar": 1},
@@ -247,10 +247,10 @@ FOOD_DATABASE = {
     "nutella": {"id": 153, "categories": ["sweet", "creamy", "condiment"], "meal_type": "snack", "glycemic_index": 55, "carbs": 21, "sugar": 20},
 
     # ==================== FAST FOOD & FRIED ====================
-    "fries": {"id": 154, "categories": ["salty", "hot"], "meal_type": "snack", "glycemic_index": 75, "carbs": 40, "sugar": 0},
-    "french fries": {"id": 155, "categories": ["salty", "hot", "crunchy"], "meal_type": "snack", "glycemic_index": 75, "carbs": 40, "sugar": 0},
-    "curly fries": {"id": 156, "categories": ["salty", "hot", "crunchy"], "meal_type": "snack", "glycemic_index": 75, "carbs": 42, "sugar": 0},
-    "sweet potato fries": {"id": 157, "categories": ["sweet", "hot", "crunchy"], "meal_type": "snack", "glycemic_index": 50, "carbs": 25, "sugar": 8},
+    "fries": {"id": 154, "categories": ["salty", "hot", "potato"], "meal_type": "snack", "glycemic_index": 75, "carbs": 40, "sugar": 0},
+    "french fries": {"id": 155, "categories": ["salty", "hot", "crunchy", "potato"], "meal_type": "snack", "glycemic_index": 75, "carbs": 40, "sugar": 0},
+    "curly fries": {"id": 156, "categories": ["salty", "hot", "crunchy", "potato"], "meal_type": "snack", "glycemic_index": 75, "carbs": 42, "sugar": 0},
+    "sweet potato fries": {"id": 157, "categories": ["sweet", "hot", "crunchy", "potato"], "meal_type": "snack", "glycemic_index": 50, "carbs": 25, "sugar": 8},
     "onion rings": {"id": 158, "categories": ["salty", "hot", "crunchy"], "meal_type": "snack", "glycemic_index": 75, "carbs": 35, "sugar": 4},
     "mozzarella sticks": {"id": 159, "categories": ["salty", "hot", "crunchy", "creamy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 25, "sugar": 1},
     "cheese sticks": {"id": 160, "categories": ["salty", "hot", "crunchy"], "meal_type": "snack", "glycemic_index": 60, "carbs": 25, "sugar": 1},
@@ -259,10 +259,10 @@ FOOD_DATABASE = {
     "nuggets": {"id": 163, "categories": ["savory", "hot", "crunchy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 46, "carbs": 15, "sugar": 0},
     "chicken tenders": {"id": 164, "categories": ["savory", "hot", "crunchy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 50, "carbs": 20, "sugar": 0},
     "chicken strips": {"id": 165, "categories": ["savory", "hot", "crunchy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 50, "carbs": 20, "sugar": 0},
-    "chicken wings": {"id": 166, "categories": ["savory", "hot", "protein", "meat"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
-    "wings": {"id": 167, "categories": ["savory", "hot", "protein", "meat"], "meal_type": "snack", "glycemic_index": 0, "carbs": 0, "sugar": 0},
-    "buffalo wings": {"id": 168, "categories": ["savory", "hot", "spicy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 5, "carbs": 2, "sugar": 1},
-    "hot wings": {"id": 169, "categories": ["savory", "hot", "spicy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 5, "carbs": 2, "sugar": 1},
+    "chicken wings": {"id": 166, "categories": ["savory", "hot", "protein", "meat"], "meal_type": "dinner", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "wings": {"id": 167, "categories": ["savory", "hot", "protein", "meat"], "meal_type": "dinner", "glycemic_index": 0, "carbs": 0, "sugar": 0},
+    "buffalo wings": {"id": 168, "categories": ["savory", "hot", "spicy", "protein", "meat"], "meal_type": "dinner", "glycemic_index": 5, "carbs": 2, "sugar": 1},
+    "hot wings": {"id": 169, "categories": ["savory", "hot", "spicy", "protein", "meat"], "meal_type": "dinner", "glycemic_index": 5, "carbs": 2, "sugar": 1},
     "fried chicken": {"id": 170, "categories": ["savory", "hot", "crunchy", "protein", "meat"], "meal_type": "dinner", "glycemic_index": 40, "carbs": 15, "sugar": 0},
     "popcorn chicken": {"id": 171, "categories": ["savory", "hot", "crunchy", "protein", "meat"], "meal_type": "snack", "glycemic_index": 46, "carbs": 18, "sugar": 0},
     "corn dog": {"id": 172, "categories": ["savory", "hot", "protein", "meat"], "meal_type": "snack", "glycemic_index": 60, "carbs": 28, "sugar": 9},
@@ -441,8 +441,8 @@ FOOD_DATABASE = {
     "yogurt": {"id": 331, "categories": ["creamy", "protein", "dairy"], "meal_type": "snack", "glycemic_index": 33, "carbs": 12, "sugar": 12},
     "greek yogurt": {"id": 332, "categories": ["creamy", "protein", "dairy"], "meal_type": "snack", "glycemic_index": 12, "carbs": 6, "sugar": 6},
     "parfait": {"id": 333, "categories": ["sweet", "creamy", "dairy"], "meal_type": "snack", "glycemic_index": 50, "carbs": 30, "sugar": 20},
-    "hash browns": {"id": 334, "categories": ["salty", "hot", "crunchy"], "meal_type": "breakfast", "glycemic_index": 75, "carbs": 25, "sugar": 0},
-    "home fries": {"id": 335, "categories": ["salty", "hot"], "meal_type": "breakfast", "glycemic_index": 75, "carbs": 25, "sugar": 0},
+    "hash browns": {"id": 334, "categories": ["salty", "hot", "crunchy", "potato"], "meal_type": "breakfast", "glycemic_index": 75, "carbs": 25, "sugar": 0},
+    "home fries": {"id": 335, "categories": ["salty", "hot", "potato"], "meal_type": "breakfast", "glycemic_index": 75, "carbs": 25, "sugar": 0},
     "breakfast burrito": {"id": 336, "categories": ["savory", "hot", "bread", "protein"], "meal_type": "breakfast", "glycemic_index": 65, "carbs": 35, "sugar": 3},
     "breakfast sandwich": {"id": 337, "categories": ["savory", "hot", "bread", "protein"], "meal_type": "breakfast", "glycemic_index": 65, "carbs": 30, "sugar": 3},
 
@@ -609,11 +609,11 @@ FOOD_DATABASE = {
     "onions": {"id": 414, "categories": ["savory", "vegetable"], "meal_type": "dinner", "glycemic_index": 15, "carbs": 9, "sugar": 4},
     "peppers": {"id": 415, "categories": ["savory", "crunchy", "vegetable"], "meal_type": "dinner", "glycemic_index": 15, "carbs": 6, "sugar": 4},
     "bell pepper": {"id": 416, "categories": ["savory", "crunchy", "vegetable"], "meal_type": "dinner", "glycemic_index": 15, "carbs": 6, "sugar": 4},
-    "potato": {"id": 417, "categories": ["savory", "hot", "vegetable"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
-    "potatoes": {"id": 418, "categories": ["savory", "hot", "vegetable"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
-    "baked potato": {"id": 419, "categories": ["savory", "hot", "vegetable"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
-    "mashed potatoes": {"id": 420, "categories": ["savory", "hot", "creamy", "vegetable"], "meal_type": "dinner", "glycemic_index": 80, "carbs": 35, "sugar": 2},
-    "sweet potato": {"id": 421, "categories": ["sweet", "hot", "vegetable"], "meal_type": "dinner", "glycemic_index": 63, "carbs": 20, "sugar": 4},
+    "potato": {"id": 417, "categories": ["savory", "hot", "vegetable", "potato"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
+    "potatoes": {"id": 418, "categories": ["savory", "hot", "vegetable", "potato"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
+    "baked potato": {"id": 419, "categories": ["savory", "hot", "vegetable", "potato"], "meal_type": "dinner", "glycemic_index": 78, "carbs": 37, "sugar": 2},
+    "mashed potatoes": {"id": 420, "categories": ["savory", "hot", "creamy", "vegetable", "potato"], "meal_type": "dinner", "glycemic_index": 80, "carbs": 35, "sugar": 2},
+    "sweet potato": {"id": 421, "categories": ["sweet", "hot", "vegetable", "potato"], "meal_type": "dinner", "glycemic_index": 63, "carbs": 20, "sugar": 4},
     "avocado": {"id": 422, "categories": ["creamy", "vegetable"], "meal_type": "snack", "glycemic_index": 15, "carbs": 9, "sugar": 0},
     "hummus": {"id": 423, "categories": ["savory", "creamy", "vegetable"], "meal_type": "snack", "glycemic_index": 12, "carbs": 14, "sugar": 0},
 
@@ -776,6 +776,7 @@ CATEGORY_KEYWORDS = {
     "hot": ["hot", "warm", "heated"],
     "savory": ["savory", "hearty", "filling"],
     "spicy": ["spicy", "hot", "fiery"],
+    "nut": ["nuts", "nut", "nutty"],
 }
 
 ## MEAL TYPE KEYWORDS ##
