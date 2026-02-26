@@ -52,7 +52,7 @@ Incomplete      Off-topic        Complete
 | `chat_layer_constants.py` | All constants: negation tokens, food keywords, unsure phrases |
 | `chat_layer_time_utils.py` | Time-of-day bucketing and meal type → time mapping |
 | `chat_layer_unsure.py` | "I don't know" / "surprise me" detection |
-| `chat_layer_food_database.py` | 680+ food entries with nutrition, categories, meal type |
+| `chat_layer_food_database.py` | 700+ food entries with nutrition, categories, meal type |
 | `main.py` | FastAPI endpoint + response message generation |
 
 ---
@@ -90,7 +90,7 @@ All extraction runs through SpaCy (`en_core_web_sm`) and PhraseMatcher.
 
 ### 1) Food Extraction
 
-- Matches against 680+ food database keys
+- Matches against 700+ food database keys
 - Longest-span match wins  
   - `"chocolate milkshake"` beats `"chocolate"` + `"milkshake"`
 - Classifies foods as:

@@ -161,7 +161,7 @@ XGBoost's raw output F_T(x) is a log-odds score. `predict_proba` converts it to 
 p = σ(F_T(x)) = 1 / (1 + e^(−F_T(x)))
 ```
 
-This is the "safety score" we threshold at 0.40. At p = 0.5 the model is equally confident in both classes; p = 0.40 means we only redirect if the model is 60%+ confident the food is unsafe, giving the benefit of the doubt to user preference.
+This is the "safety score" we compare against a dynamic threshold based on the user's current glucose level. At p = 0.5 the model is equally confident in both classes; the dynamic threshold gives more benefit of the doubt when glucose is low (where eating carbs is medically important) and is stricter when glucose is already elevated.
 
 **Hyperparameters:**
 
@@ -234,8 +234,9 @@ User-facing response
 
 **Case 1: Single specific food (e.g. "I want pasta")**
 - Score the requested food
-- p ≥ 0.40 → approve it (user gets what they asked for)
-- p < 0.40 → redirect to the safest food in the same category family
+- p ≥ threshold → approve it (user gets what they asked for)
+- p < threshold → redirect to the safest food in the same category family
+- Threshold is dynamic: 0.05 (glucose < 90), 0.28 (glucose 90–120), 0.35 (glucose ≥ 120)
 
 **Case 2: Multi-food meal (e.g. "steak and mashed potatoes")**
 - Each food is evaluated independently
