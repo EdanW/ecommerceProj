@@ -1,5 +1,5 @@
 ## Requirements
-- Python 3.12.x (Python 3.14 is currently not supported due to Scapy compatibility.)
+- Python 3.12.x (Python 3.14 is currently not supported due to SpaCy compatibility.)
 - Node.js 18+ (includes npm)
 
 ## Recommended flow 
@@ -16,10 +16,13 @@ source venv/bin/activate
 # 3. Install backend dependencies
 pip install -r backend/requirements.txt
 
-# 4. Run backend
+# 4. Download SpaCy language model
+python -m spacy download en_core_web_sm
+
+# 5. Run backend
 uvicorn backend.main:app --reload --port 8000
 
-# 5. Run frontend
+# 6. Run frontend
 cd frontend
 npm install
 npm run dev
