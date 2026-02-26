@@ -93,7 +93,7 @@ textarea::placeholder {
 /* Button & Text Styles from before... */
 .crave-btn { width: 100%; padding: 16px; background: linear-gradient(90deg, #A29BFE, #F48FB1); border: none; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; }
 .back-btn { background: none; border: none; font-size: 16px; color: #888; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;}
-.tiny-text { font-size: 12px; color: #888; }
+.tiny-text { font-size: 16px; color: #333; }
 .logo-text { font-family: sans-serif; color: #6FCF97; font-weight: 900; }
 .status-badge { padding: 8px; border-radius: 8px; font-size: 12px; text-align: center; }
 .status-badge.green { background: #E8F5E9; color: #2E7D32; }
