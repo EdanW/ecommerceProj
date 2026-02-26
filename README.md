@@ -76,8 +76,7 @@ ecommerceProj/
 ├── ds_insights_and_utils/
 │   ├── generate_synthetic_data.py     # Generates 50K labeled training samples via risk oracle
 │   ├── train_model.py                 # Trains XGBoost with 5-fold CV, saves food_safety_model.pkl
-│   ├── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
-│   └── fix_categories.py              # One-time utility: backfilled type-category tags in the food DB
+│   └── evaluate_baselines.py          # Compares XGBoost vs random guesser vs static heuristic
 ├── frontend/
 │   └── src/
 │       ├── App.jsx                    # Root component + routing
