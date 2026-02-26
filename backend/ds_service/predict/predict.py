@@ -2,17 +2,30 @@ import pandas as pd
 from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
 from .predict_utils import filter_by_constraints, get_best_matches
 
-# safety score the model gives ranges from 0 to 1.
-# if the food the user asked for scores at least 0.40, just give it to them —
-# it's not risky enough to override their choice. only redirect below this.
-_REQUESTED_FOOD_SAFETY_THRESHOLD = 0.40
+def _get_safety_threshold(glucose_level):
+    """
+    Dynamic safety threshold based on current glucose.
+
+    At low glucose (< 90) the user actually needs carbs — being too restrictive
+    here is medically wrong. At normal glucose we apply a moderate threshold.
+    At elevated glucose we're stricter.
+
+    The model is somewhat conservative so we keep thresholds low enough that
+    reasonable foods (potatoes at 80 mg/dL, mac and cheese at 120 mg/dL) still pass.
+    """
+    if glucose_level < 90:
+        return 0.05   # near-unconditional approval — user needs carbs, redirecting is medically wrong
+    elif glucose_level < 120:
+        return 0.28   # moderate — high-GI foods can still pass at normal glucose
+    else:
+        return 0.35   # standard — elevated glucose, only redirect genuinely risky picks
 
 # these tags show up on basically every food (pasta is savory, ice cream is cold, etc.)
 # they don't tell us anything useful about what FAMILY a food belongs to.
 # we strip them out before doing category-based matching so "tuna" doesn't
 # accidentally match "pasta" just because both are tagged savory.
 _GENERIC_CATEGORIES = {"savory", "sweet", "hot", "cold", "spicy", "crunchy",
-                       "creamy", "salty", "sour"}
+                       "creamy", "salty", "sour", "dessert"}
 
 
 def _categories_of_requested(requested_foods, food_df):
@@ -66,7 +79,8 @@ def _evaluate_single_food(food_name, valid_candidates, food_df, json_input):
     ]
     if not food_candidates.empty:
         matches, reason = get_best_matches(json_input, food_candidates)
-        if not matches.empty and matches.iloc[0]['safety_score'] >= _REQUESTED_FOOD_SAFETY_THRESHOLD:
+        threshold = _get_safety_threshold(json_input.get('glucose_level', 100))
+        if not matches.empty and matches.iloc[0]['safety_score'] >= threshold:
             return (matches.iloc[0]['name'], False, reason)
 
     # food is unsafe or wasn't in the filtered candidate pool — find something similar
@@ -157,17 +171,47 @@ def predict(json_input):
             requested_matches, req_reason = get_best_matches(json_input, requested_candidates)
             top_requested = requested_matches.iloc[0]
 
-            if top_requested['safety_score'] >= _REQUESTED_FOOD_SAFETY_THRESHOLD:
+            threshold = _get_safety_threshold(json_input.get('glucose_level', 100))
+            if top_requested['safety_score'] >= threshold:
                 # food is safe enough — give the user what they asked for
                 top_pick = top_requested['name']
 
-                # runner-up comes from the full candidate pool (not just what was requested)
-                all_matches, _ = get_best_matches(json_input, valid_candidates)
+                # runner-up: prefer something in the same type family as the top pick.
+                # find the most specific type category (the one with the fewest matching
+                # foods in the candidate pool) and score within that narrower pool.
+                # this prevents e.g. "tuna in water" appearing as runner-up to "chicken
+                # salad" just because it has 0 carbs — a salad-family food is far more
+                # relevant.
+                top_type_cats = _family_categories_of_requested([top_pick], food_df)
                 runner_up = None
-                for _, row in all_matches.iterrows():
-                    if row['name'].lower() != top_pick.lower():
-                        runner_up = row['name']
-                        break
+                if top_type_cats:
+                    most_specific_cat = min(
+                        top_type_cats,
+                        key=lambda cat: valid_candidates['categories'].apply(
+                            lambda cats: isinstance(cats, list) and
+                            cat in [c.lower() for c in cats]
+                        ).sum()
+                    )
+                    same_type_pool = valid_candidates[
+                        valid_candidates['categories'].apply(
+                            lambda cats: isinstance(cats, list) and
+                            most_specific_cat in [c.lower() for c in cats]
+                        )
+                    ]
+                    same_type_pool = same_type_pool[
+                        same_type_pool['name'].str.lower() != top_pick.lower()
+                    ]
+                    if not same_type_pool.empty:
+                        ru_matches, _ = get_best_matches(json_input, same_type_pool)
+                        runner_up = ru_matches.iloc[0]['name'] if not ru_matches.empty else None
+
+                # fallback: global top scorer if no same-type option found
+                if runner_up is None:
+                    all_matches, _ = get_best_matches(json_input, valid_candidates)
+                    for _, row in all_matches.iterrows():
+                        if row['name'].lower() != top_pick.lower():
+                            runner_up = row['name']
+                            break
 
                 return {
                     "food": top_pick,

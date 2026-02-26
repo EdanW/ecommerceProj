@@ -38,8 +38,25 @@ def filter_by_constraints(foods_df, user_input):
     if excluded_foods:
         valid_foods = valid_foods[~valid_foods['name'].str.lower().isin(excluded_foods)]
 
-    # remove entire categories the user excluded
+    # expand exclusions to the type-family of each excluded food.
+    # e.g. "chicken wings" has type category "wings" → also exclude "wings",
+    # "buffalo wings", "hot wings" so the user doesn't get a variant they
+    # clearly didn't want. only non-generic type tags are used for this.
+    _GENERIC_CATS = {"savory", "sweet", "hot", "cold", "spicy", "crunchy",
+                     "creamy", "salty", "sour", "dessert", "protein", "meat",
+                     "seafood", "dairy", "drink", "vegetable", "fruit", "bread",
+                     "grain", "soup", "salad", "pasta", "italian"}
     excluded_cats = [c.lower() for c in user_input['craving'].get('excluded_categories', [])]
+    if excluded_foods:
+        for food_name in excluded_foods:
+            rows = foods_df[foods_df['name'].str.lower() == food_name]
+            for _, row in rows.iterrows():
+                if isinstance(row.get('categories'), list):
+                    type_cats = [c.lower() for c in row['categories']
+                                 if c.lower() not in _GENERIC_CATS]
+                    excluded_cats = list(set(excluded_cats + type_cats))
+
+    # remove entire categories the user excluded (including auto-expanded ones above)
     if excluded_cats:
         valid_foods = valid_foods[valid_foods['categories'].apply(
             lambda cats: not any(c.lower() in excluded_cats for c in cats)
@@ -146,7 +163,12 @@ def get_best_matches(user_json, candidates_df):
     scores = model.predict_proba(X_model)[:, 1]
 
     candidates_df = candidates_df.copy()
-    candidates_df['safety_score'] = scores
+
+    # add a small random jitter so foods with similar safety scores rotate
+    # instead of always returning the same winner. jitter is capped at 0.08
+    # (8%) so genuinely unsafe foods (scoring << safe ones) still won't surface.
+    jitter = np.random.uniform(0, 0.08, size=len(scores))
+    candidates_df['safety_score'] = scores + jitter
 
     best_matches = candidates_df.sort_values(by='safety_score', ascending=False).head(2)
 

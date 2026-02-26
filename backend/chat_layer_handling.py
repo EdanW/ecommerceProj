@@ -190,7 +190,7 @@ class AIEngine:
                     ),
                 }
 
-            # 1C — Food-related but too vague to act on
+            # 1C — Truly vague: no food, no category — ask what they're craving
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
                 "glucose_level": glucose_level,
@@ -206,7 +206,10 @@ class AIEngine:
                 "partial_data": craving_data,
             }
 
-        # Case 2 — Categories present but meal context unknown
+        # Case 2 — Category known but no meal context yet — ask once
+        # Guard: if meal_type is already set (e.g. user said "I want a snack and
+        # something sweet"), skip the follow-up and recommend directly so we never
+        # send two follow-ups for a single turn.
         if not wanted_foods and wanted_categories and not meal_type:
             self.pending_extractions[user_id] = {
                 "craving_data": craving_data,
@@ -215,7 +218,6 @@ class AIEngine:
                 "missing": "meal_type",
                 "created_at": datetime.now(),
             }
-
             category_str = " and ".join(wanted_categories)
             return {
                 "complete": False,
@@ -228,6 +230,7 @@ class AIEngine:
             }
 
         # Case 3 — Sufficient information to recommend
+        # (meal_type is optional — we infer it from the current time of day if missing)
         return self._build_complete_response(craving_data, glucose_level, glucose_history, pregnancy_week)
 
     def _handle_follow_up(
