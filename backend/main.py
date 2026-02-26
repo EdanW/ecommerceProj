@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, create_engine, select, delete
 from sqlalchemy import desc
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from .models import User, GlucoseLog, GlucoseReading, DailyHabit, CravingFeedback, FoodLog
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user

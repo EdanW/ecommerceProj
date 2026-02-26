@@ -4,33 +4,28 @@ from .predict_utils import filter_by_constraints, get_best_matches
 
 def _get_safety_threshold(glucose_level):
     """
-    Dynamic safety threshold based on current glucose.
-
-    At low glucose (< 90) the user actually needs carbs — being too restrictive
-    here is medically wrong. At normal glucose we apply a moderate threshold.
-    At elevated glucose we're stricter.
-
-    The model is somewhat conservative so we keep thresholds low enough that
-    reasonable foods (potatoes at 80 mg/dL, mac and cheese at 120 mg/dL) still pass.
+    Returns the minimum safety score a requested food must achieve to be approved
+    without redirection. The threshold scales with current glucose level to reflect
+    clinical gestational diabetes management priorities: at low glucose, carbohydrate
+    intake is important and aggressive restriction is contraindicated; at elevated
+    glucose, stricter filtering is applied to limit glycemic load.
     """
     if glucose_level < 90:
-        return 0.05   # near-unconditional approval — user needs carbs, redirecting is medically wrong
+        return 0.05   # low glucose — high tolerance, carbohydrate intake is appropriate
     elif glucose_level < 120:
-        return 0.28   # moderate — high-GI foods can still pass at normal glucose
+        return 0.28   # normal range — moderate restriction, high-GI foods may still be acceptable
     else:
-        return 0.35   # standard — elevated glucose, only redirect genuinely risky picks
+        return 0.35   # elevated glucose — standard conservative threshold
 
-# these tags show up on basically every food (pasta is savory, ice cream is cold, etc.)
-# they don't tell us anything useful about what FAMILY a food belongs to.
-# we strip them out before doing category-based matching so "tuna" doesn't
-# accidentally match "pasta" just because both are tagged savory.
+# Taste and texture tags shared across unrelated food families.
+# Excluded from category-based family matching to prevent spurious cross-family redirects
+# (e.g., matching "tuna" to "pasta" solely because both carry the "savory" tag).
 _GENERIC_CATEGORIES = {"savory", "sweet", "hot", "cold", "spicy", "crunchy",
                        "creamy", "salty", "sour", "dessert"}
 
 
 def _categories_of_requested(requested_foods, food_df):
-    # grabs ALL category tags from the food(s) the user asked for,
-    # including taste tags like sweet/cold/creamy
+    # Returns all category tags (type and taste) associated with the requested foods.
     rows = food_df[food_df['name'].str.lower().isin(requested_foods)]
     cats = set()
     for cat_list in rows['categories']:
@@ -41,17 +36,15 @@ def _categories_of_requested(requested_foods, food_df):
 
 def _family_categories_of_requested(requested_foods, food_df):
     """
-    Figures out which food "family" the requested food belongs to, so when
-    we have to redirect (food is unsafe), we stay in the same ballpark.
+    Returns the type-level category tags for the requested foods, used to anchor
+    redirects within the same food family. Type categories (grain, dairy, pasta,
+    seafood, etc.) are preferred over generic taste tags because they more precisely
+    define what kind of food is being requested.
 
-    We prefer the meaningful type categories (grain, dairy, pasta, seafood…)
-    over generic taste tags. For example pasta gives us {grain, italian, pasta}
-    which keeps the redirect within carb foods instead of jumping to fish.
-
-    The edge case is something like a chocolate milkshake whose only tags are
-    sweet/cold/creamy — all generic. If we stripped those we'd have nothing left
-    and the redirect could land on literally any food (we once got avocado).
-    So if there are no type categories, we fall back and use the taste tags.
+    Fallback: if a food carries no type-level categories (only generic tags such as
+    sweet/cold/creamy), the taste tags are returned instead. Without this fallback,
+    an empty category set would cause the redirect to draw from the entire food pool
+    rather than staying within a semantically related group.
     """
     all_cats = _categories_of_requested(requested_foods, food_df)
     type_cats = all_cats - _GENERIC_CATEGORIES
@@ -60,19 +53,18 @@ def _family_categories_of_requested(requested_foods, food_df):
 
 def _evaluate_single_food(food_name, valid_candidates, food_df, json_input):
     """
-    Scores one specific food and figures out what to actually recommend.
+    Scores a single named food against the current glucose context and returns
+    a recommendation. If the food clears the dynamic safety threshold it is
+    approved as-is; otherwise the function finds the highest-scoring alternative
+    within the same food-family category pool.
 
-    If the food is safe enough (above our threshold) → return it as-is.
-    If it's not → find the closest alternative in the same food family.
-
-    Used for multi-food requests like "steak and mashed potatoes" so we can
-    evaluate the main dish and the side independently instead of just picking
-    whichever one scores highest overall.
+    Intended for use in multi-food requests (e.g. "steak and mashed potatoes")
+    where each component of the meal is evaluated independently.
 
     Returns: (resolved_name, was_redirected, reason)
-        resolved_name  — what we're actually going to recommend
-        was_redirected — True if we swapped it for something safer
-        reason         — one-line explanation for the user
+        resolved_name  — the food being recommended (original or redirect)
+        was_redirected — True if the original food was replaced with an alternative
+        reason         — one-line human-readable explanation for the recommendation
     """
     food_candidates = valid_candidates[
         valid_candidates['name'].str.lower() == food_name.lower()
@@ -103,20 +95,21 @@ def _evaluate_single_food(food_name, valid_candidates, food_df, json_input):
 
 def predict(json_input):
     """
-    Main prediction function. Takes the user's current glucose state + craving
-    and returns the best food to eat right now.
+    Entry point for the recommendation pipeline. Accepts a structured JSON payload
+    containing the user's glucose state and parsed craving, and returns the most
+    appropriate food recommendation.
 
-    The overall flow:
-    1. Filter the full food database down to realistic candidates (removes excluded
-       foods, wrong meal types, condiments, etc.)
-    2. If the user asked for specific foods, score those first.
-       - Safe enough? Give them what they asked for.
-       - Too risky? Redirect, but stay within the same food family.
-    3. If the user asked for multiple foods (e.g. a meal), evaluate each separately.
-    4. If the request was vague (no specific food named), just return the top scorer.
+    Pipeline:
+    1. Convert the food database to a DataFrame and apply constraint filtering
+       (exclusions, meal type, condiments, category whitelisting).
+    2. If specific foods were requested, score them against the dynamic safety
+       threshold. Approved foods are returned directly; foods that fail the threshold
+       are redirected to the highest-scoring alternative in the same food family.
+    3. Multi-food requests (e.g. a composed meal) are decomposed and each component
+       is evaluated independently via _evaluate_single_food().
+    4. Vague requests with no named food return the top-scoring candidate from the
+       filtered pool.
     """
-    print("entered predict")
-
     # convert the food DB dict into a dataframe so we can filter/sort it
     food_list = []
     for name, stats in FOOD_DB.items():
@@ -130,14 +123,13 @@ def predict(json_input):
     if valid_candidates.empty:
         return {
             "food": None,
-            "reason": "no foods in POC database that support this scenario",
+            "reason": "No matching foods found for the given craving and constraints.",
             "another_option": None
         }
 
     requested_foods = [f.lower() for f in json_input.get('craving', {}).get('foods', [])]
 
-    # if the user named more than one food (like "steak and mashed potatoes"),
-    # handle each one separately so we can address the whole meal in our response
+    # Multi-food requests are decomposed and each component is evaluated independently.
     if len(requested_foods) > 1:
         meal_assessment = {}
         primary_reason = None
@@ -149,7 +141,7 @@ def predict(json_input):
             if primary_reason is None and reason:
                 primary_reason = reason
 
-        # the "primary" food shown in the response is just the first one that resolved
+        # Primary food in the response is the first successfully resolved component.
         primary = next(
             (meal_assessment[f]["resolved"] for f in requested_foods if meal_assessment[f]["resolved"]),
             None
@@ -161,7 +153,7 @@ def predict(json_input):
             "meal_assessment": meal_assessment,
         }
 
-    # single food request — score it and decide whether to approve or redirect
+    # Single food request: score the candidate and apply the safety threshold.
     if requested_foods:
         requested_candidates = valid_candidates[
             valid_candidates['name'].str.lower().isin(requested_foods)
@@ -173,15 +165,11 @@ def predict(json_input):
 
             threshold = _get_safety_threshold(json_input.get('glucose_level', 100))
             if top_requested['safety_score'] >= threshold:
-                # food is safe enough — give the user what they asked for
                 top_pick = top_requested['name']
 
-                # runner-up: prefer something in the same type family as the top pick.
-                # find the most specific type category (the one with the fewest matching
-                # foods in the candidate pool) and score within that narrower pool.
-                # this prevents e.g. "tuna in water" appearing as runner-up to "chicken
-                # salad" just because it has 0 carbs — a salad-family food is far more
-                # relevant.
+                # Runner-up selection: score within the most specific type-category pool
+                # shared with the top pick. Using the narrowest matching category rather
+                # than the full candidate pool keeps the alternative contextually relevant.
                 top_type_cats = _family_categories_of_requested([top_pick], food_df)
                 runner_up = None
                 if top_type_cats:
@@ -219,8 +207,8 @@ def predict(json_input):
                     "another_option": runner_up
                 }
 
-            # food didn't clear the threshold — redirect to something safer
-            # but stay in the same category family (no suggesting fish for pasta)
+            # Food did not clear the safety threshold — redirect to the highest-scoring
+            # alternative within the same food-family category pool.
             req_categories = _family_categories_of_requested(requested_foods, food_df)
             if req_categories:
                 same_family = valid_candidates[
@@ -229,7 +217,7 @@ def predict(json_input):
                         not set(c.lower() for c in cats).isdisjoint(req_categories)
                     )
                 ]
-                # drop the original food (it already failed the safety check)
+                # Exclude the original food from the redirect pool.
                 same_family = same_family[
                     ~same_family['name'].str.lower().isin(requested_foods)
                 ]
@@ -237,11 +225,11 @@ def predict(json_input):
                     family_matches, family_reason = get_best_matches(json_input, same_family)
                     top_pick = family_matches.iloc[0]['name'] if not family_matches.empty else None
                     if top_pick:
-                        # for the runner-up we need a tighter filter.
-                        # the "same family" pool can be broad — dairy includes both
-                        # milkshakes AND parmesan. we require the runner-up to also
-                        # match the TASTE profile of the original (sweet/cold/creamy)
-                        # so we don't suggest cheese as an alternative to a milkshake.
+                        # Runner-up requires a tighter filter than the primary redirect.
+                        # The family pool may span foods with very different taste profiles
+                        # (e.g. the dairy family includes both milkshakes and hard cheeses).
+                        # The runner-up is additionally required to match the taste tags
+                        # of the original request to ensure sensory relevance.
                         all_cats_original = _categories_of_requested(requested_foods, food_df)
                         taste_cats_original = all_cats_original & _GENERIC_CATEGORIES
 
@@ -249,14 +237,13 @@ def predict(json_input):
                             ~same_family['name'].str.lower().isin([top_pick.lower()])
                         ]
                         if taste_cats_original and not runner_up_pool.empty:
-                            # strictest filter first: must match ALL taste tags
-                            # e.g. milkshake needs sweet+cold+creamy, not just one of them
+                            # Prefer full match (all taste tags present); fall back to
+                            # partial match (at least one shared tag) if nothing qualifies.
                             taste_filtered = runner_up_pool[runner_up_pool['categories'].apply(
                                 lambda cats: isinstance(cats, list) and
                                 taste_cats_original.issubset(set(c.lower() for c in cats))
                             )]
                             if taste_filtered.empty:
-                                # nothing matched all tags — relax to "at least one"
                                 taste_filtered = runner_up_pool[runner_up_pool['categories'].apply(
                                     lambda cats: isinstance(cats, list) and
                                     not set(c.lower() for c in cats).isdisjoint(taste_cats_original)
@@ -275,8 +262,8 @@ def predict(json_input):
                             "another_option": runner_up
                         }
 
-    # vague request (no specific food named) or no same-family alternative found —
-    # just return whatever scores highest in the filtered pool
+    # Vague request (no specific food named) or no same-family alternative found:
+    # return the top-scoring food from the filtered candidate pool.
     best_matches, top_reason = get_best_matches(json_input, valid_candidates)
 
     top_pick = best_matches.iloc[0]['name'] if not best_matches.empty else None

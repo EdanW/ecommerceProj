@@ -1,28 +1,22 @@
-from typing import List, Dict, Any
+from typing import List
 
 def _analyze_glucose_trend(history: List[dict]) -> tuple:
     """
-    Helper to calculate average and trend from history list.
-    Assumes history is sorted Newest -> Oldest
-    Returns: avg_glucose, trend
+    Computes the rolling glucose average and directional trend from a reading history.
+
+    Expects history sorted newest-first (index 0 = most recent reading).
+    Trend is derived from the delta between the most recent and oldest readings:
+      > +10 mg/dL → "rising", < -10 mg/dL → "falling", otherwise → "stable".
+
+    Returns: (avg_glucose_int, trend_str)
     """
     if not history:
-        # Fallback if no history exists
         return 0, "stable"
 
-    # 1. Extract values
     values = [item['glucose_mg_dl'] for item in history]
-    
-    # 2. Calculate Average
     avg_glucose = sum(values) / len(values)
 
-    # 3. Calculate Trend (Newest - Oldest)
-    # We assume index 0 is the most recent (21:30) and index -1 is oldest (17:00)
-    newest = values[0]
-    oldest = values[-1]
-    delta = newest - oldest
-
-    # Define a threshold for "trend" (e.g., change > 10mg/dl)
+    delta = values[0] - values[-1]
     if delta > 10:
         trend = "rising"
     elif delta < -10:
@@ -30,5 +24,4 @@ def _analyze_glucose_trend(history: List[dict]) -> tuple:
     else:
         trend = "stable"
 
-    avg_glucose_int = int(avg_glucose)
-    return avg_glucose_int, trend
+    return int(avg_glucose), trend

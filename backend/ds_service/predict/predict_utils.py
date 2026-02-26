@@ -1,5 +1,4 @@
 import pandas as pd
-from backend.chat_layer_food_database import FOOD_DATABASE as FOOD_DB
 from backend.ds_service.preprocessing.preprocessing import create_features
 import numpy as np
 import joblib
@@ -9,22 +8,20 @@ _MODEL = None
 _MODEL_PATH = "backend/ds_service/models/food_safety_model.pkl"
 
 def load_model():
-    # lazy load — only reads the .pkl file the first time, then keeps it in memory.
-    # avoids reloading the model on every single request which would be very slow.
+    # Singleton loader: deserializes the model on first call and caches it for
+    # subsequent requests, avoiding repeated disk I/O per inference call.
     global _MODEL
     if _MODEL is None:
         if not os.path.exists(_MODEL_PATH):
             raise FileNotFoundError(f"Model not found at {_MODEL_PATH}. Train it first!")
-        print(f"🧠 Loading XGBoost Model from {_MODEL_PATH}...")
         _MODEL = joblib.load(_MODEL_PATH)
     return _MODEL
 
 
 def filter_by_constraints(foods_df, user_input):
-    # takes the full food database and progressively narrows it down based on
-    # what the user said. each step removes more foods from the pool.
-    print("entered filter_by_constraints")
-
+    # Progressively narrows the full food pool by applying constraint filters
+    # in order: condiment removal, explicit exclusions, category exclusions,
+    # category whitelist, and meal-type matching.
     valid_foods = foods_df.copy()
 
     # remove condiments (butter, ketchup, mayo, ranch, soy sauce…)
@@ -76,11 +73,9 @@ def filter_by_constraints(foods_df, user_input):
             lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(expanded_cats)
         )]
 
-    # meal type filter (breakfast / lunch / dinner / snack)
-    # pasta is tagged as "dinner" in our DB, so if someone asks for lunch,
-    # we'd normally remove it from the pool entirely and never consider it.
-    # to fix that, we re-add any food the user explicitly named even if the
-    # meal type doesn't match — the model will still score it and decide.
+    # Meal-type filter. Foods explicitly requested by the user are re-included
+    # even when their tagged meal_type does not match the requested meal, allowing
+    # the model to score and surface them rather than silently dropping them.
     target_meal = user_input['craving'].get('meal_type')
 
     if target_meal:
@@ -97,30 +92,28 @@ def filter_by_constraints(foods_df, user_input):
                 valid_foods = meal_filtered
         else:
             print('warning: meal type missing, skipping this filter')
-    print(f'filtered down to {len(valid_foods)} valid foods')
     return valid_foods
 
 
 def generate_reason(features):
     """
-    Builds a one-line explanation of why the top food was picked.
-    Looks at glucose trend, time of day, GI, and sugar content
-    and picks the most relevant thing to tell the user.
+    Produces a single user-facing sentence explaining the primary reason the top
+    food was selected. Prioritises glucose context (trend, current level), then
+    time-of-day suitability, then food nutritional properties (GI, sugar).
+    Returns a generic fallback if no specific condition is met.
     """
     reasons = []
 
-    # check glucose context first
     if features.get('glucose_trend', 0) == -1:
         reasons.append("is safe while your levels are trending down")
     elif features.get('glucose_level', 100) < 90:
         reasons.append("helps maintain your current stable levels")
 
-    if features.get('time_of_day') == 0:  # morning
+    if features.get('time_of_day') == 1:  # morning
         reasons.append("fits your high morning insulin sensitivity")
-    elif features.get('time_of_day') == 3 and features.get('food_carbs', 0) < 30:
+    elif features.get('time_of_day') == 4 and features.get('food_carbs', 0) < 30:  # night
         reasons.append("is light enough for late-night digestion")
 
-    # food-specific properties
     if features.get('food_gi', 50) < 55:
         reasons.append("has a low Glycemic Index to prevent spikes")
     if features.get('food_sugar', 0) < 5:
@@ -134,17 +127,20 @@ def generate_reason(features):
 
 def get_best_matches(user_json, candidates_df):
     """
-    Scores every food in candidates_df against the user's current glucose state
-    using the XGBoost classifier, then returns the top 2 results.
+    Scores each food in candidates_df using the XGBoost safety classifier and
+    returns the top 2 results sorted by safety score descending.
 
-    The model outputs a probability from 0 to 1 — how likely this food is "safe"
-    for this user right now. We sort by that score and take the top 2.
+    Each food is converted to a 9-feature vector (user context + food nutrition)
+    and passed through model.predict_proba(). The resulting class-1 probability
+    represents the model's confidence that the food is safe for this user at this
+    moment. A small uniform jitter is added before ranking to introduce variety
+    among foods with similar scores.
 
     Returns: (top_2_dataframe, reason_string_for_winner)
     """
     model = load_model()
 
-    # build a feature vector for each food by combining user state + food nutrition
+    # Build a 9-feature vector for each candidate by combining user state and food nutrition.
     feature_rows = []
     for _, food_item in candidates_df.iterrows():
         food_dict = food_item.to_dict()
@@ -153,7 +149,7 @@ def get_best_matches(user_json, candidates_df):
 
     X_full = pd.DataFrame(feature_rows)
 
-    # the model was trained with exactly these 9 features in this order
+    # Feature order must match the training schema exactly.
     model_cols = ['glucose_level', 'glucose_avg', 'glucose_trend', 'pregnancy_week',
                   'intensity', 'time_of_day', 'food_gi', 'food_carbs', 'food_sugar']
 
@@ -164,15 +160,14 @@ def get_best_matches(user_json, candidates_df):
 
     candidates_df = candidates_df.copy()
 
-    # add a small random jitter so foods with similar safety scores rotate
-    # instead of always returning the same winner. jitter is capped at 0.08
-    # (8%) so genuinely unsafe foods (scoring << safe ones) still won't surface.
+    # Uniform jitter in [0, 0.08] breaks ties between foods with similar safety
+    # scores, producing variety in recommendations without meaningfully affecting
+    # the relative ordering of foods with substantially different scores.
     jitter = np.random.uniform(0, 0.08, size=len(scores))
     candidates_df['safety_score'] = scores + jitter
 
     best_matches = candidates_df.sort_values(by='safety_score', ascending=False).head(2)
 
-    # generate a human-readable reason for why the top pick was chosen
     top_reason = "No recommendation found."
     if not best_matches.empty:
         top_index = best_matches.index[0]
