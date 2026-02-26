@@ -90,12 +90,27 @@ def generate_data():
         if intensity == 2:
             risk_score *= 1.1
 
-        # 4. Labeling with Noisy Threshold
-        
-        threshold_noise = np.random.normal(0, 3.0) 
-        effective_threshold = 45 + threshold_noise
-        
-        # Now, a score of 46 might still be "Safe" if the noise pushes the threshold to 48.
+        # 4. Labeling with Dynamic + Noisy Threshold
+        #
+        # The old fixed threshold of 45 was too aggressive — it labelled pasta
+        # as UNSAFE even at perfectly normal glucose (140 mg/dL), because the
+        # pregnancy-week multiplier alone pushed pasta's risk over 45.
+        # The model therefore learned "zero-carb foods always win", causing it
+        # to recommend tuna regardless of what the user asked for.
+        #
+        # Fix: base threshold scales with current glucose level so that moderate-
+        # carb foods (pasta, bread, grains) are correctly labelled SAFE when the
+        # user's glucose is in a healthy range.
+        if glucose_level < 120:
+            base_threshold = 75   # Low glucose  → very permissive
+        elif glucose_level < 160:
+            base_threshold = 60   # Normal range → moderate (pasta fits here)
+        else:
+            base_threshold = 35   # High glucose → strict
+
+        threshold_noise = np.random.normal(0, 3.0)
+        effective_threshold = base_threshold + threshold_noise
+
         is_safe = 1 if risk_score < effective_threshold else 0
         
         # --- D. Append Data (Matching 9 Features EXACTLY) ---

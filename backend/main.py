@@ -94,6 +94,44 @@ def get_last_n_glucose_readings(n: int = 10) -> list[dict]:
         for r in readings
     ]
 
+def _generate_meal_message(meal_assessment: dict, glucose_level: int, glucose_status: str) -> str:
+    """Build a user-facing message for a multi-food meal request."""
+    parts_approved = []
+    parts_swapped = []   # list of (original_food, resolved_food)
+
+    for original, info in meal_assessment.items():
+        resolved = info.get("resolved")
+        if resolved is None:
+            continue
+        if not info.get("redirected"):
+            parts_approved.append(resolved)
+        else:
+            parts_swapped.append((original, resolved))
+
+    if glucose_status == "Elevated":
+        context = f"Your glucose is a bit elevated ({glucose_level} mg/dL)"
+    elif glucose_status == "Low":
+        context = f"Your glucose is on the lower side ({glucose_level} mg/dL)"
+    else:
+        context = f"Your glucose looks good ({glucose_level} mg/dL)"
+
+    if parts_approved and not parts_swapped:
+        foods_str = " and ".join(parts_approved)
+        message = f"{context} — {foods_str} both look great for your meal! 🎉"
+    elif parts_swapped and not parts_approved:
+        swaps = " and ".join(f"{r} instead of {o}" for o, r in parts_swapped)
+        message = f"{context} — I'd go with {swaps} for a safer option!"
+    else:
+        # Mixed: some approved, some redirected
+        approved_str = " and ".join(parts_approved)
+        verb = "looks" if len(parts_approved) == 1 else "look"
+        message = f"{context} — {approved_str} {verb} great!"
+        for original, resolved in parts_swapped:
+            message += f" For the {original}, I'd swap in {resolved} instead."
+
+    return message + " 💜"
+
+
 def _generate_assistant_message(
     model_response: dict,
     craving_input: dict,
@@ -101,6 +139,11 @@ def _generate_assistant_message(
     glucose_status: str
 ) -> str:
     """Turn model output into a user-facing message."""
+    # Multi-food meal path
+    meal_assessment = model_response.get("meal_assessment")
+    if meal_assessment and len(meal_assessment) > 1:
+        return _generate_meal_message(meal_assessment, glucose_level, glucose_status)
+
     food = model_response.get("food")
     another_option = model_response.get("another_option")
 
@@ -161,25 +204,28 @@ def _generate_assistant_message(
                 f"How about {food}? It's a great option for you right now! 🎉"
             )
     else:
+        original = ", ".join(requested_foods) if requested_foods else "that"
         if glucose_status == "Elevated":
             message = (
                 f"Your glucose is a bit elevated ({glucose_level} mg/dL), "
-                f"so that might not be the best option right now. "
+                f"so {original} isn't the best option right now. "
                 f"A better alternative would be {food}!"
             )
         elif glucose_status == "Low":
             message = (
                 f"Your glucose is on the lower side ({glucose_level} mg/dL). "
-                f"I'd suggest going with {food} instead!"
+                f"Instead of {original}, I'd suggest going with {food}!"
             )
         else:
             message = (
-                f"Your glucose looks good ({glucose_level} mg/dL)! "
-                f"I'd recommend {food} — it's a great option for you right now."
+                f"Your glucose looks good ({glucose_level} mg/dL), "
+                f"but {original} is a bit heavy for right now. "
+                f"I'd suggest trying {food} instead!"
             )
 
-    if another_option:
-        message += f"\nAnother option for you: {another_option}."
+    # Show runner-up only if it's meaningfully different from the main pick
+    if another_option and another_option.lower() not in food_lower and food_lower not in another_option.lower():
+        message += f"\nAnother option: {another_option}."
 
     message += " 💜"
     return message

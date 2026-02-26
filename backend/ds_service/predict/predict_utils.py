@@ -23,6 +23,18 @@ def filter_by_constraints(foods_df, user_input):
 
     # 1. Start with all foods
     valid_foods = foods_df.copy()
+
+    # 1b. Always strip pure condiments from the candidate pool.
+    #     Condiments are toppings/sauces/spreads — never a standalone food recommendation
+    #     (butter, ketchup, mayo, ranch, soy sauce, etc.).
+    #     Drinks are NOT excluded here — milkshakes, smoothies, and coffees are
+    #     legitimate cravings and should remain recommendable.
+    #     Exception: if the user explicitly requested the condiment by name, keep it.
+    requested_foods = [f.lower() for f in user_input['craving'].get('foods', [])]
+    valid_foods = valid_foods[valid_foods['categories'].apply(
+        lambda cats: isinstance(cats, list) and "condiment" not in [c.lower() for c in cats]
+    ) | valid_foods['name'].str.lower().isin(requested_foods)]
+
     # 2. User Requested Exclusions (Foods)
     excluded_foods = [f.lower() for f in user_input['craving'].get('excluded_foods', [])]
     if excluded_foods:
@@ -44,15 +56,25 @@ def filter_by_constraints(foods_df, user_input):
             lambda food_cats: not set(c.lower() for c in food_cats).isdisjoint(target_cats)
         )]
 
-    # 5. Filter for same meal type
+    # 5. Filter for same meal type — but always keep user-requested foods so the
+    #    model can score them (and legitimately suggest an alternative if needed).
     target_meal = user_input['craving'].get('meal_type')
-    
+
     if target_meal:
         target_meal = target_meal.lower()
         if 'meal_type' in valid_foods.columns:
-            valid_foods = valid_foods[valid_foods['meal_type'].str.lower() == target_meal]        
+            meal_match = valid_foods['meal_type'].str.lower() == target_meal
+            meal_filtered = valid_foods[meal_match]
+            # Re-add explicitly requested foods that were dropped by meal-type filter
+            if requested_foods:
+                requested_but_dropped = valid_foods[
+                    valid_foods['name'].str.lower().isin(requested_foods) & ~meal_match
+                ]
+                valid_foods = pd.concat([meal_filtered, requested_but_dropped]).drop_duplicates(subset=['name'])
+            else:
+                valid_foods = meal_filtered
         else:
-            print ('warning: meal type missing, skipping this filter')
+            print('warning: meal type missing, skipping this filter')
     print(f'filtered down to {len(valid_foods)} valid foods')
     return valid_foods
 
